@@ -1,0 +1,18 @@
+export const GPXWPTOriginKey = [
+  'magvar',
+  'geoidheight',
+  'name',
+  'cmt',
+  'src',
+  'link',
+  'sym',
+  'type',
+  'fix',
+  'sat',
+  'desc',
+  'hdop',
+  'vdop',
+  'pdop',
+  'ageofdgpsdata',
+  'dgpsid',
+];

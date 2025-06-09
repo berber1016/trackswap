@@ -1,12 +1,13 @@
 import { Parser } from "htmlparser2";
 import { ExtensionsType, Token, TokenAST } from "../types.js";
 import {
-  GPX11Type,
-  MetadataType,
-  RteType,
-  TrkType,
-  WptType,
-  DecoderContext,
+  TCXFileType,
+  TCXContext,
+  ActivityListType,
+  AbstractSourceType,
+  FolderType,
+  WorkoutListType,
+  CourseListType,
 } from "./types.js";
 
 /**
@@ -22,20 +23,20 @@ export enum PipelineStage {
 // ============ 流水线处理器实现 ============
 
 /**
- * 流水线处理器
+ * 流水线处理器接口
  */
 export interface IPipelineProcessor {
   stage: PipelineStage;
-  process(context: DecoderContext): Promise<DecoderContext>;
+  process(context: TCXContext): Promise<TCXContext>;
 }
 
 /**
- * Tokenize处理器, 将xml转为 token
+ * Tokenize处理器，将XML转为Token
  */
 export class TokenizeProcessor implements IPipelineProcessor {
   stage = PipelineStage.TOKENIZE;
 
-  async process(context: DecoderContext): Promise<DecoderContext> {
+  async process(context: TCXContext): Promise<TCXContext> {
     const startTime = Date.now();
 
     if (!context.xmlContent) {
@@ -81,7 +82,7 @@ export class TokenizeProcessor implements IPipelineProcessor {
 export class AstGenerateProcessor implements IPipelineProcessor {
   stage = PipelineStage.AST_GENERATE;
 
-  async process(context: DecoderContext): Promise<DecoderContext> {
+  async process(context: TCXContext): Promise<TCXContext> {
     const startTime = Date.now();
 
     if (!context.tokens) {
@@ -131,24 +132,24 @@ export class ConvertProcessor implements IPipelineProcessor {
 
   constructor(private getConverter: (tag: string) => any) {}
 
-  async process(context: DecoderContext): Promise<DecoderContext> {
+  async process(context: TCXContext): Promise<TCXContext> {
     const startTime = Date.now();
 
     if (!context.ast) {
       throw new Error("AST不能为空");
     }
 
-    const gpx: GPX11Type = {};
+    const tcx: TCXFileType = {};
 
     // 处理根节点属性
     if (context.ast.attributes) {
       Object.entries(context.ast.attributes).forEach(([key, value]) => {
         if (key.startsWith("xmlns:")) {
-          gpx[key] = value.replace(/&#39;/g, "'");
+          tcx[key] = value.replace(/&#39;/g, "'");
         } else if (key === "xsi:schemaLocation") {
-          gpx[key] = value.replace(/&#39;/g, "'");
+          tcx[key] = value.replace(/&#39;/g, "'");
         } else {
-          gpx[key] = value;
+          tcx[key] = value;
         }
       });
     }
@@ -158,11 +159,12 @@ export class ConvertProcessor implements IPipelineProcessor {
       const converter = this.getConverter(child.tag);
       if (!converter) {
         console.error(`标签 ${child.tag} 未找到对应的 converter`);
+        return;
       }
       try {
         const result = converter.convert(child, context);
         if (result) {
-          this.assignResult(gpx, child.tag, result);
+          this.assignResult(tcx, child.tag, result);
         }
       } catch (error) {
         context.errors.push(error as Error);
@@ -173,31 +175,35 @@ export class ConvertProcessor implements IPipelineProcessor {
       }
     });
 
-    context.result = gpx;
+    context.result = tcx;
     context.performance.convertTime = Date.now() - startTime;
 
     return context;
   }
 
-  private assignResult(gpx: GPX11Type, tag: string, result: any): void {
+  private assignResult(tcx: TCXFileType, tag: string, result: any): void {
     switch (tag) {
-      case "metadata":
-        gpx.metadata = result as MetadataType;
+      case "Folders":
+        tcx.Folders = result as FolderType;
         break;
-      case "wpt":
-        if (!gpx.wpt) gpx.wpt = [];
-        gpx.wpt.push(result as WptType);
+      case "Activities":
+        tcx.Activities = result as ActivityListType;
         break;
-      case "rte":
-        if (!gpx.rte) gpx.rte = [];
-        gpx.rte.push(result as RteType);
+      case "Workouts":
+        tcx.Workouts = result as WorkoutListType;
         break;
-      case "trk":
-        if (!gpx.trk) gpx.trk = [];
-        gpx.trk.push(result as TrkType);
+      case "Courses":
+        tcx.Courses = result as CourseListType;
         break;
-      case "extensions":
-        gpx.extensions = result as ExtensionsType;
+      case "Author":
+        tcx.Author = result as AbstractSourceType;
+        break;
+      case "Extensions":
+        tcx.Extensions = result as ExtensionsType;
+        break;
+      default:
+        // 对于其他标签，直接赋值
+        tcx[tag] = result;
         break;
     }
   }
@@ -209,7 +215,7 @@ export class ConvertProcessor implements IPipelineProcessor {
 export class CompleteProcessor implements IPipelineProcessor {
   stage = PipelineStage.COMPLETE;
 
-  async process(context: DecoderContext): Promise<DecoderContext> {
+  async process(context: TCXContext): Promise<TCXContext> {
     context.performance.endTime = Date.now();
 
     // 记录性能指标
@@ -221,6 +227,14 @@ export class CompleteProcessor implements IPipelineProcessor {
       astTime: context.performance.astTime,
       convertTime: context.performance.convertTime,
     });
+
+    // 更新统计信息
+    if (context.stats) {
+      context.stats.endTime = Date.now();
+      if (context.tokens) {
+        context.stats.processedTokens = context.tokens.length;
+      }
+    }
 
     return context;
   }

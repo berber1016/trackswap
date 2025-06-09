@@ -1,10 +1,7 @@
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc.js";
-import { GPXWPTOriginKey } from "./util.js";
 import {
-  GpxExtensionsv3Key,
   GpxExtensionsv3Mapping,
-  TrackPointExtensionv1Key,
   TrackPointExtensionv1Mapping,
 } from "./extensions/index.js";
 import {
@@ -697,3 +694,7 @@ export class GPXEncoder {
     return this.encode(node);
   }
 }
+
+export default {
+  GPXEncoder,
+};

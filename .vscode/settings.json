@@ -1,12 +1,33 @@
 {
     "cSpell.words": [
+        "ageofdgpsdata",
+        "Defn",
+        "Defns",
+        "dgpsid",
         "Extensionsv",
         "Extensionv",
+        "geoidheight",
+        "gpxpx",
+        "gpxtpx",
+        "hdop",
+        "magvar",
+        "maxlat",
+        "maxlon",
+        "mesg",
+        "Mesgs",
+        "minlat",
+        "minlon",
+        "MULTISPORT",
         "onclosetag",
         "onopentag",
         "ontext",
+        "PADDLEBOARDING",
+        "pdop",
         "rtept",
+        "TCXXML",
         "trkpt",
-        "Trkseg"
+        "Trkseg",
+        "vdop",
+        "WAKEBOARDING"
     ]
 }

@@ -3,6 +3,8 @@ src/
 example/
 .vscode/
 
+garmin/
+
 # Development files
 tsconfig.json
 .gitignore

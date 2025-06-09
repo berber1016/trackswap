@@ -6,6 +6,7 @@ import {
   Token,
   TokenAST,
 } from "../types.js";
+import { IProcessingContext } from "../core/base.js";
 
 /**
  * Two lat/lon pairs defining the extent of an element.
@@ -240,14 +241,14 @@ export interface TrksegType {
 }
 
 // 避免循环引用，直接定义需要的接口
-export interface DecoderContext {
+export interface DecoderContext extends IProcessingContext {
   rawData?: Buffer;
   xmlContent?: string;
   tokens?: Token[];
   ast?: TokenAST;
   result?: GPX11Type;
-  metadata: Map<string, any>;
-  errors: Error[];
+  // IProcessingContext 已经包含了 metadata、errors、warnings、stats
+  // 这里添加 GPX 特定的性能统计
   performance: {
     startTime: number;
     tokenizeTime?: number;

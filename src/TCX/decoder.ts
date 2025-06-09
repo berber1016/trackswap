@@ -1,16 +1,14 @@
 import { ExtensionsType, TokenAST } from "../types.js";
-import { IGPXConverterPlugin, IGPXMiddlewarePlugin } from "./base.js";
+import { ITCXConverterPlugin, ITCXMiddlewarePlugin } from "./base.js";
 import {
-  BoundsConverter,
-  CopyrightConverter,
-  EmailConverter,
-  LinkConverter,
-  MetadataConverter,
-  PersonConverter,
-  RteConverter,
-  TrkConverter,
-  TrksegConverter,
-  WptConverter,
+  PositionConverter,
+  TrackpointConverter,
+  TrackConverter,
+  ActivityLapConverter,
+  ActivityConverter,
+  ActivityListConverter,
+  MultiSportSessionConverter,
+  AbstractSourceConverter,
 } from "./converters.js";
 import {
   AstGenerateProcessor,
@@ -20,17 +18,15 @@ import {
   TokenizeProcessor,
   PipelineStage,
 } from "./processor.js";
-import { DecoderContext, GPX11Type } from "./types.js";
-
-// ============ 主解码器类 ============
+import { TCXContext, TCXFileType } from "./types.js";
 
 /**
- * GPX解码器主类
+ * https://www8.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd
  */
-export class GPXDecoder {
-  private converterPlugins = new Map<string, IGPXConverterPlugin[]>();
+export class TCXDecoder {
+  private converterPlugins = new Map<string, ITCXConverterPlugin[]>();
   private registeredPlugins = new Set<string>(); // 跟踪已注册的插件名
-  private middlewarePlugins: IGPXMiddlewarePlugin[] = [];
+  private middlewarePlugins: ITCXMiddlewarePlugin[] = [];
   private processors: IPipelineProcessor[] = []; // 固定的核心处理器
   private initialized = false;
   private defaultConvertersRegistered = false;
@@ -51,26 +47,24 @@ export class GPXDecoder {
       new CompleteProcessor(),
     ];
 
-    console.log("🔧 核心流水线处理器已初始化 (固定不可修改)");
+    console.log("🔧 TCX核心流水线处理器已初始化 (固定不可修改)");
   }
 
   /**
-   * 自动注册默认转换器 - 处理标准GPX标签
+   * 自动注册默认转换器 - 处理标准TCX标签
    */
   private async registerDefaultConverters(): Promise<void> {
     if (this.defaultConvertersRegistered) return;
 
     const defaultConverters = [
-      new WptConverter(),
-      new RteConverter(),
-      new TrkConverter(),
-      new TrksegConverter(),
-      new LinkConverter(),
-      new MetadataConverter(),
-      new PersonConverter(),
-      new EmailConverter(),
-      new CopyrightConverter(),
-      new BoundsConverter(),
+      new PositionConverter(),
+      new TrackpointConverter(),
+      new TrackConverter(),
+      new ActivityLapConverter(),
+      new ActivityConverter(),
+      new ActivityListConverter(),
+      new MultiSportSessionConverter(),
+      new AbstractSourceConverter(),
     ];
 
     for (const converter of defaultConverters) {
@@ -82,7 +76,7 @@ export class GPXDecoder {
     }
 
     this.defaultConvertersRegistered = true;
-    console.log("✅ 默认GPX转换器已自动注册 (wpt, rte, trk, metadata等)");
+    console.log("✅ 默认TCX转换器已自动注册 (Activities, Position, Track等)");
   }
 
   /**
@@ -90,7 +84,7 @@ export class GPXDecoder {
    */
   private addConverterForTag(
     tag: string,
-    converter: IGPXConverterPlugin
+    converter: ITCXConverterPlugin
   ): void {
     if (!this.converterPlugins.has(tag)) {
       this.converterPlugins.set(tag, []);
@@ -106,7 +100,7 @@ export class GPXDecoder {
   /**
    * 注册转换器插件
    */
-  async registerConverter(plugin: IGPXConverterPlugin): Promise<void> {
+  async registerConverter(plugin: ITCXConverterPlugin): Promise<void> {
     // 检查插件是否已注册
     if (this.registeredPlugins.has(plugin.name)) {
       throw new Error(`转换器插件 ${plugin.name} 已存在`);
@@ -122,7 +116,7 @@ export class GPXDecoder {
     const priorityInfo =
       plugin.priority !== undefined ? ` (优先级: ${plugin.priority})` : "";
     console.log(
-      `📦 已注册自定义转换器: ${
+      `📦 已注册自定义TCX转换器: ${
         plugin.name
       }${priorityInfo}, 支持标签: ${plugin.supportedTags?.join(", ")}`
     );
@@ -142,16 +136,16 @@ export class GPXDecoder {
   /**
    * 注册中间件插件 - 真正的扩展点
    */
-  async registerMiddleware(plugin: IGPXMiddlewarePlugin): Promise<void> {
+  async registerMiddleware(plugin: ITCXMiddlewarePlugin): Promise<void> {
     const existingIndex = this.middlewarePlugins.findIndex(
       (p) => p.name === plugin.name
     );
     if (existingIndex !== -1) {
       this.middlewarePlugins[existingIndex] = plugin;
-      console.log(`🔄 已更新中间件: ${plugin.name}`);
+      console.log(`🔄 已更新TCX中间件: ${plugin.name}`);
     } else {
       this.middlewarePlugins.push(plugin);
-      console.log(`🔌 已注册中间件: ${plugin.name}`);
+      console.log(`🔌 已注册TCX中间件: ${plugin.name}`);
     }
 
     // 显示中间件支持的钩子
@@ -170,7 +164,7 @@ export class GPXDecoder {
   /**
    * 获取转换器（返回优先级最高的）
    */
-  getConverter(tag: string): IGPXConverterPlugin | undefined {
+  getConverter(tag: string): ITCXConverterPlugin | undefined {
     const converters = this.converterPlugins.get(tag);
     return converters && converters.length > 0 ? converters[0] : undefined;
   }
@@ -178,7 +172,7 @@ export class GPXDecoder {
   /**
    * 获取指定标签的所有转换器（按优先级排序）
    */
-  getAllConverters(tag: string): IGPXConverterPlugin[] {
+  getAllConverters(tag: string): ITCXConverterPlugin[] {
     return this.converterPlugins.get(tag) || [];
   }
 
@@ -187,7 +181,7 @@ export class GPXDecoder {
    */
   unregisterConverter(pluginName: string): void {
     // 找到插件实例
-    let pluginToRemove: IGPXConverterPlugin | undefined;
+    let pluginToRemove: ITCXConverterPlugin | undefined;
 
     for (const [tag, converters] of this.converterPlugins) {
       const index = converters.findIndex(
@@ -205,12 +199,12 @@ export class GPXDecoder {
     }
 
     if (!pluginToRemove) {
-      console.warn(`转换器插件 ${pluginName} 不存在`);
+      console.warn(`TCX转换器插件 ${pluginName} 不存在`);
       return;
     }
 
     this.registeredPlugins.delete(pluginName);
-    console.log(`🗑️ 已移除转换器: ${pluginName}`);
+    console.log(`🗑️ 已移除TCX转换器: ${pluginName}`);
   }
 
   /**
@@ -220,88 +214,10 @@ export class GPXDecoder {
     const index = this.middlewarePlugins.findIndex((p) => p.name === name);
     if (index !== -1) {
       this.middlewarePlugins.splice(index, 1);
-      console.log(`🗑️ 已移除中间件: ${name}`);
+      console.log(`🗑️ 已移除TCX中间件: ${name}`);
     } else {
-      console.warn(`中间件 ${name} 不存在`);
+      console.warn(`TCX中间件 ${name} 不存在`);
     }
-  }
-
-  /**
-   * 列出所有已注册的转换器标签
-   */
-  listConverters(): string[] {
-    return Array.from(this.converterPlugins.keys());
-  }
-
-  /**
-   * 列出所有已注册的转换器插件
-   */
-  listConverterPlugins(): string[] {
-    return Array.from(this.registeredPlugins);
-  }
-
-  /**
-   * 列出所有已注册的中间件
-   */
-  listMiddlewares(): string[] {
-    return this.middlewarePlugins.map((p) => p.name);
-  }
-
-  /**
-   * 列出核心处理器（只读）
-   */
-  listProcessors(): string[] {
-    return this.processors.map((p) => p.constructor.name);
-  }
-
-  /**
-   * 获取标签的转换器详情（包括优先级信息）
-   */
-  getConverterDetails(
-    tag?: string
-  ): Record<string, Array<{ name: string; priority: number }>> {
-    const result: Record<
-      string,
-      Array<{ name: string; priority: number }>
-    > = {};
-
-    if (tag) {
-      const converters = this.converterPlugins.get(tag);
-      if (converters) {
-        result[tag] = converters.map((c) => ({
-          name: c.name,
-          priority: c.priority || 100,
-        }));
-      }
-    } else {
-      for (const [tagName, converters] of this.converterPlugins) {
-        result[tagName] = converters.map((c) => ({
-          name: c.name,
-          priority: c.priority || 100,
-        }));
-      }
-    }
-
-    return result;
-  }
-
-  /**
-   * 获取中间件详情（包括支持的钩子）
-   */
-  getMiddlewareDetails(): Array<{ name: string; hooks: string[] }> {
-    return this.middlewarePlugins.map((plugin) => {
-      const hooks = [];
-      if (plugin.onTokenize) hooks.push("onTokenize");
-      if (plugin.onAstGenerate) hooks.push("onAstGenerate");
-      if (plugin.onConvert) hooks.push("onConvert");
-      if (plugin.onComplete) hooks.push("onComplete");
-      if (plugin.onError) hooks.push("onError");
-
-      return {
-        name: plugin.name,
-        hooks,
-      };
-    });
   }
 
   /**
@@ -325,7 +241,7 @@ export class GPXDecoder {
       try {
         await plugin.initialize?.(context);
       } catch (error) {
-        console.error(`插件 ${plugin.name} 初始化失败:`, error);
+        console.error(`TCX插件 ${plugin.name} 初始化失败:`, error);
       }
     }
 
@@ -350,7 +266,7 @@ export class GPXDecoder {
       try {
         await plugin.destroy?.(context);
       } catch (error) {
-        console.error(`插件 ${plugin.name} 销毁失败:`, error);
+        console.error(`TCX插件 ${plugin.name} 销毁失败:`, error);
       }
     }
 
@@ -360,7 +276,7 @@ export class GPXDecoder {
   /**
    * 创建解码上下文
    */
-  private createContext(): DecoderContext {
+  private createContext(): TCXContext {
     return {
       metadata: new Map(),
       errors: [],
@@ -380,9 +296,9 @@ export class GPXDecoder {
    * 执行中间件钩子
    */
   private async executeMiddlewareHook<T>(
-    hookName: keyof IGPXMiddlewarePlugin,
+    hookName: keyof ITCXMiddlewarePlugin,
     data: T,
-    context: DecoderContext
+    context: TCXContext
   ): Promise<T> {
     let result = data;
 
@@ -404,7 +320,7 @@ export class GPXDecoder {
   /**
    * 主解析方法 - 固定的流水线 + 灵活的中间件
    */
-  async parserByBuffer(buffer: Buffer): Promise<GPX11Type | undefined> {
+  async parseByBuffer(buffer: Buffer): Promise<TCXFileType | undefined> {
     await this.initialize();
 
     let context = this.createContext();
@@ -470,13 +386,13 @@ export class GPXDecoder {
             await middleware.onError?.(error as Error, context);
           }
 
-          console.error(`流水线阶段 ${processor.stage} 处理失败:`, error);
+          console.error(`TCX流水线阶段 ${processor.stage} 处理失败:`, error);
         }
       }
 
       return context.result;
     } catch (error) {
-      console.error("GPX解析失败:", error);
+      console.error("TCX解析失败:", error);
       throw error;
     }
   }
@@ -508,8 +424,25 @@ export class GPXDecoder {
 
     return extensions;
   }
+
+  // ==================== 向后兼容方法 ====================
+
+  /**
+   * @deprecated 使用 parseByBuffer 替代
+   */
+  async parserByBuffer(buffer: Buffer): Promise<TCXFileType | undefined> {
+    return this.parseByBuffer(buffer);
+  }
+
+  /**
+   * @deprecated 使用新的插件系统替代
+   */
+  async parseByString(xmlContent: string): Promise<TCXFileType | undefined> {
+    const buffer = Buffer.from(xmlContent, "utf-8");
+    return this.parseByBuffer(buffer);
+  }
 }
 
 export default {
-  GPXDecoder,
+  TCXDecoder,
 };

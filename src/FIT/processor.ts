@@ -71,7 +71,6 @@ export class ParseProcessor implements IFITPipelineProcessor {
 
     const decoder = new Decoder(stream);
     const { messages, errors } = decoder.read();
-
     if (errors && errors.length > 0) {
       console.warn("FIT parsing warnings:", errors);
     }

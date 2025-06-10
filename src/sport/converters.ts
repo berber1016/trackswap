@@ -73,7 +73,14 @@ export class GPXToSportConverter extends BaseSportConverter {
   }
 
   protected convertPoint(point: WptType): SportPointType | undefined {
-    if (!point.lat || !point.lon) return undefined;
+    if (
+      point.lat == null ||
+      point.lon == null ||
+      typeof point.lat !== "number" ||
+      typeof point.lon !== "number"
+    ) {
+      return undefined;
+    }
 
     const { extensions } = point;
     const gpxExtensions = extensions
@@ -93,7 +100,12 @@ export class GPXToSportConverter extends BaseSportConverter {
     const points: SportPointType[] = [];
     for (let i = 0; i < wpts.length; i++) {
       const wpt = wpts[i];
-      if (wpt.lat && wpt.lon) {
+      if (
+        wpt.lat != null &&
+        wpt.lon != null &&
+        typeof wpt.lat === "number" &&
+        typeof wpt.lon === "number"
+      ) {
         const point = this.convertPoint(wpt);
         if (point) points.push(point);
       }
@@ -168,9 +180,17 @@ export class FITToSportConverter extends BaseSportConverter {
   }
 
   protected convertPoint(point: RecordMesgType): SportPointType | undefined {
+    console.log("point", point);
     const { positionLong, positionLat, altitude, timestamp, ...rest } = point;
 
-    if (!positionLong || !positionLat) return undefined;
+    if (
+      positionLong == null ||
+      positionLat == null ||
+      typeof positionLong !== "number" ||
+      typeof positionLat !== "number"
+    ) {
+      return undefined;
+    }
 
     return {
       lat: round(semicirclesToDegrees(Number(positionLat)), 6),
@@ -191,7 +211,10 @@ export class FITToSportConverter extends BaseSportConverter {
           ?.map((record) => this.convertPoint(record))
           .filter((point): point is SportPointType => point !== undefined) ||
         [];
-
+      console.log(
+        "lap======",
+        lap?.recordMesgs?.map((record) => this.convertPoint(record))
+      );
       routeSeg.push({
         points: points,
         duration: lap.totalElapsedTime,
@@ -288,8 +311,14 @@ export class TCXToSportConverter extends BaseSportConverter {
   protected convertPoint(point: TrackpointType): SportPointType | undefined {
     const { Position, Time, DistanceMeters, AltitudeMeters } = point;
 
-    if (!Position?.LatitudeDegrees || !Position?.LongitudeDegrees)
+    if (
+      !Position?.LatitudeDegrees ||
+      !Position?.LongitudeDegrees ||
+      Position.LatitudeDegrees === "" ||
+      Position.LongitudeDegrees === ""
+    ) {
       return undefined;
+    }
 
     return {
       lat: Number(Position.LatitudeDegrees),

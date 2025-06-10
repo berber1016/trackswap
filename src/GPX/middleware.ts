@@ -2,17 +2,17 @@ import { Token, TokenAST } from "../types";
 import { BaseGPXMiddleware } from "./base";
 import { DecoderContext } from "./types";
 
-// ============ 示例中间件 ============
+// ============ Example Middleware ============
 
 /**
- * 性能监控中间件
+ * Performance monitoring middleware
  */
 export class PerformanceMiddleware extends BaseGPXMiddleware {
   name = "performance-middleware";
-  description = "监控解析性能";
+  description = "Monitor parsing performance";
 
   async onTokenize(tokens: Token[], context: DecoderContext): Promise<Token[]> {
-    console.log(`Token化完成，生成了 ${tokens.length} 个token`);
+    console.log(`Tokenization completed, generated ${tokens.length} tokens`);
     return tokens;
   }
 
@@ -21,13 +21,13 @@ export class PerformanceMiddleware extends BaseGPXMiddleware {
     context: DecoderContext
   ): Promise<TokenAST> {
     const nodeCount = this.countNodes(ast);
-    console.log(`AST生成完成，包含 ${nodeCount} 个节点`);
+    console.log(`AST generation completed, contains ${nodeCount} nodes`);
     return ast;
   }
 
   async onComplete(result: any, context: DecoderContext): Promise<any> {
     const performance = context.metadata.get("performance");
-    console.log("解析性能统计:", performance);
+    console.log("Parsing performance statistics:", performance);
     return result;
   }
 
@@ -43,19 +43,19 @@ export class PerformanceMiddleware extends BaseGPXMiddleware {
 }
 
 /**
- * 验证中间件
+ * Validation middleware
  */
 export class ValidationMiddleware extends BaseGPXMiddleware {
   name = "validation-middleware";
-  description = "验证GPX数据的完整性";
+  description = "Validate GPX data integrity";
 
   async onComplete(result: any, context: DecoderContext): Promise<any> {
     const errors = this.validateGPX(result);
     if (errors.length > 0) {
-      console.warn("GPX验证发现问题:", errors);
+      console.warn("GPX validation found issues:", errors);
       context.metadata.set("validation-errors", errors);
     } else {
-      console.log("GPX验证通过");
+      console.log("GPX validation passed");
     }
     return result;
   }
@@ -64,14 +64,14 @@ export class ValidationMiddleware extends BaseGPXMiddleware {
     const errors: string[] = [];
 
     if (!gpx.version) {
-      errors.push("缺少GPX版本信息");
+      errors.push("Missing GPX version information");
     }
 
     if (!gpx.creator) {
-      errors.push("缺少GPX创建者信息");
+      errors.push("Missing GPX creator information");
     }
 
-    // 验证轨迹点
+    // Validate track points
     if (gpx.trk) {
       for (const track of gpx.trk) {
         if (track.trkseg) {
@@ -82,7 +82,7 @@ export class ValidationMiddleware extends BaseGPXMiddleware {
                   typeof point.lat !== "number" ||
                   typeof point.lon !== "number"
                 ) {
-                  errors.push("轨迹点坐标无效");
+                  errors.push("Invalid track point coordinates");
                 }
               }
             }
@@ -95,10 +95,10 @@ export class ValidationMiddleware extends BaseGPXMiddleware {
   }
 }
 
-// ============ 默认转换器注册函数 ============
+// ============ Default Converter Registration Function ============
 
 /**
- * 注册所有默认中间件
+ * Register all default middleware
  */
 export async function registerDefaultMiddlewares(decoder: any): Promise<void> {
   const middlewares = [new PerformanceMiddleware(), new ValidationMiddleware()];

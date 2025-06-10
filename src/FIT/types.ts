@@ -1,7 +1,7 @@
 import { IProcessingContext } from "../core/base.js";
 
 /**
- * Session 对应 AbstractTrackType Lap 对应 RouteSegType Records 对应 RouteType 每个Record 对应 PointType
+ * Session corresponds to AbstractTrackType, Lap corresponds to RouteSegType, Records corresponds to RouteType, each Record corresponds to PointType
  */
 export interface FITFileType {
   fileIdMesgs?: FileIdMesgType[];
@@ -25,7 +25,7 @@ export type FITDecoderMesgs = {
   lapMesgs?: Omit<SessionMesgType, "recordMesgs">[];
   recordMesgs?: RecordMesgType[];
   courseMesgs?: any[];
-  // 索引签名，支持动态访问
+  // Index signature, supports dynamic access
   [key: string]: any[] | undefined;
 };
 
@@ -98,11 +98,11 @@ export interface UserProfileMesgType {
  */
 export interface SessionMesgType {
   /**
-   * 时间
+   * Time
    */
   timestamp?: string;
   /**
-   * 开始时间
+   * Start time
    */
   startTime?: string;
   startPositionLat?: number;
@@ -124,11 +124,11 @@ export interface SessionMesgType {
   avgPower?: number;
   maxPower?: number;
   /**
-   * 总爬升
+   * Total ascent
    */
   totalAscent?: number;
   /**
-   * 总下降
+   * Total descent
    */
   totalDescent?: number;
   firstLapIndex?: number;
@@ -171,7 +171,7 @@ export interface RecordMesgType {
 }
 
 /**
- * FIT 文件额外记录的数据 LapMesg
+ * FIT additional recorded data LapMesg
  */
 export interface LapMesgType {
   timestamp?: string;
@@ -219,22 +219,22 @@ export interface ActivityMesgType {
 }
 
 /**
- * FIT 消息处理上下文
+ * FIT message processing context
  */
 export interface FITContext extends IProcessingContext {
-  /** 原始二进制数据 */
+  /** Raw binary data */
   rawData?: Buffer;
-  /** FIT SDK 解析的原始消息 */
+  /** Raw messages parsed by FIT SDK */
   rawMessages?: FITDecoderMesgs;
-  /** 最终结果 */
+  /** Final result */
   result?: FITFileType;
-  /** FIT 文件头信息 */
+  /** FIT file header information */
   fileHeader?: {
     type?: string;
     manufacturer?: string;
     product?: number;
   };
-  /** FIT 特定的性能统计 */
+  /** FIT specific performance statistics */
   performance: {
     startTime: number;
     parseTime?: number;

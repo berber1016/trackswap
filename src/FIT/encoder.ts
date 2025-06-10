@@ -18,19 +18,19 @@ const PROFILE_VERSION = 2078; // 20.78
 const MAGIC = 0x2e464954; // ".FIT"
 
 /**
- * FIT 编码器选项
+ * FIT encoder options
  */
 export interface FITEncoderOptions {
-  /** 是否启用紧凑模式 */
+  /** Whether to enable compact mode */
   compact?: boolean;
-  /** 默认运动类型 */
+  /** Default sport type */
   defaultSport?: string;
-  /** 默认子运动类型 */
+  /** Default sub sport type */
   defaultSubSport?: string;
 }
 
 /**
- * FIT 编码器 - 将 FITFileType 数据编码为 FIT 二进制格式
+ * FIT encoder - encodes FITFileType data to FIT binary format
  */
 export class FITEncoder {
   private localNum: Record<string, number> = {};
@@ -39,8 +39,8 @@ export class FITEncoder {
   private options: Required<FITEncoderOptions>;
 
   /**
-   * 构造函数
-   * @param options 编码器选项
+   * Constructor
+   * @param options Encoder options
    */
   constructor(options: FITEncoderOptions = {}) {
     this.options = {
@@ -50,10 +50,10 @@ export class FITEncoder {
     };
   }
 
-  // ==================== 公共接口 ====================
+  // ==================== Public Interface ====================
 
   /**
-   * 编码 FIT 数据为 Buffer - Activity 文件类型
+   * Encode FIT data to Buffer - Activity file type
    */
   async encode(fitData: FITFileType): Promise<Buffer> {
     this.reset();
@@ -62,7 +62,7 @@ export class FITEncoder {
   }
 
   /**
-   * 编码 FIT 数据为 Buffer - Course 文件类型
+   * Encode FIT data to Buffer - Course file type
    */
   async encodeCourse(fitData: FITFileType): Promise<Buffer> {
     this.reset();
@@ -71,7 +71,7 @@ export class FITEncoder {
   }
 
   /**
-   * 编码 FIT 数据为 Blob
+   * Encode FIT data to Blob
    */
   async encodeToBlob(
     fitData: FITFileType,
@@ -82,10 +82,10 @@ export class FITEncoder {
     return this.blob;
   }
 
-  // ==================== 核心构建方法 ====================
+  // ==================== Core Build Methods ====================
 
   /**
-   * 重置编码器状态
+   * Reset encoder state
    */
   private reset(): void {
     this.localNum = {};
@@ -94,16 +94,16 @@ export class FITEncoder {
   }
 
   /**
-   * 构建 FIT 文件内容
+   * Build FIT file content
    */
   private buildFITContent(
     fitData: FITFileType,
     fileType: "activity" | "course"
   ): void {
-    // 1. 写入文件ID（必须第一个）
+    // 1. Write file ID (must be first)
     this.buildFileId(fitData, fileType);
 
-    // 2. 根据文件类型构建不同的内容
+    // 2. Build different content based on file type
     if (fileType === "course") {
       this.buildCourseContent(fitData);
     } else {
@@ -112,27 +112,27 @@ export class FITEncoder {
   }
 
   /**
-   * 构建 Activity 文件内容
+   * Build Activity file content
    */
   private buildActivityContent(fitData: FITFileType): void {
     const sessions = fitData.sessionMesgs || [];
 
     if (sessions.length === 0) {
-      throw new Error("Activity文件必须包含至少一个Session");
+      throw new Error("Activity file must contain at least one Session");
     }
 
-    // 处理所有sessions
+    // Process all sessions
     let totalSessions = 0;
     const allEvents: EventMesgType[] = [];
     const allActivities: ActivityMesgType[] = [];
 
     for (const session of sessions) {
-      // 构建session相关的events
+      // Build session-related events
       if (session.lapMesgs) {
         this.buildEventsFromLaps(session.lapMesgs, allEvents);
       }
 
-      // 构建records
+      // Build records
       if (session.lapMesgs) {
         for (const lap of session.lapMesgs) {
           if (lap.recordMesgs) {
@@ -141,57 +141,57 @@ export class FITEncoder {
         }
       }
 
-      // 构建laps
+      // Build laps
       if (session.lapMesgs) {
         this.buildLaps(session.lapMesgs);
       }
 
-      // 构建session
+      // Build session
       this.buildSession(session);
       totalSessions++;
 
-      // 构建activity
+      // Build activity
       this.buildActivityFromSession(session, allActivities);
     }
 
-    // 写入所有events
+    // Write all events
     allEvents.forEach((event) => this.buildEvent(event));
 
-    // 写入所有activities
+    // Write all activities
     allActivities.forEach((activity) => this.buildActivity(activity));
   }
 
   /**
-   * 构建 Course 文件内容
+   * Build Course file content
    */
   private buildCourseContent(fitData: FITFileType): void {
-    // Course文件的特殊处理逻辑
+    // Course file special processing logic
     const sessions = fitData.sessionMesgs || [];
 
     if (sessions.length === 0) {
-      throw new Error("Course文件必须包含轨迹数据");
+      throw new Error("Course file must contain track data");
     }
 
-    const session = sessions[0]; // Course通常只有一个session
+    const session = sessions[0]; // Course usually has only one session
 
-    // 写入course信息
+    // Write course information
     this.buildCourse({
       name: "course",
       sport: this.options.defaultSport,
     });
 
-    // 构建events和records
+    // Build events and records
     if (session.lapMesgs) {
       const allRecords: RecordMesgType[] = [];
 
-      // 收集所有records
+      // Collect all records
       for (const lap of session.lapMesgs) {
         if (lap.recordMesgs) {
           allRecords.push(...lap.recordMesgs);
         }
       }
 
-      // 排序records（按时间戳或距离）
+      // Sort records (by timestamp or distance)
       allRecords.sort((a, b) => {
         if (a.timestamp && b.timestamp) {
           return (
@@ -201,11 +201,11 @@ export class FITEncoder {
         return (a.distance || 0) - (b.distance || 0);
       });
 
-      // 构建course points和records
+      // Build course points and records
       const startRecord = allRecords[0];
       const endRecord = allRecords[allRecords.length - 1];
 
-      // 开始事件
+      // Start event
       if (startRecord.timestamp) {
         this.buildEvent({
           timestamp: startRecord.timestamp,
@@ -215,10 +215,10 @@ export class FITEncoder {
         });
       }
 
-      // 写入所有records
+      // Write all records
       allRecords.forEach((record) => this.buildRecord(record));
 
-      // 结束事件
+      // End event
       if (endRecord.timestamp) {
         this.buildEvent({
           timestamp: endRecord.timestamp,
@@ -228,17 +228,17 @@ export class FITEncoder {
         });
       }
 
-      // 写入lap
+      // Write lap
       if (session.lapMesgs[0]) {
         this.buildLap(session.lapMesgs[0]);
       }
     }
   }
 
-  // ==================== 辅助构建方法 ====================
+  // ==================== Helper Build Methods ====================
 
   /**
-   * 构建文件ID
+   * Build file ID
    */
   private buildFileId(
     fitData: FITFileType,
@@ -258,7 +258,7 @@ export class FITEncoder {
   }
 
   /**
-   * 构建Session
+   * Build Session
    */
   private buildSession(session: SessionMesgType): void {
     this.writeMesg("session", {
@@ -283,14 +283,14 @@ export class FITEncoder {
   }
 
   /**
-   * 构建Laps
+   * Build Laps
    */
   private buildLaps(laps: LapMesgType[]): void {
     laps.forEach((lap) => this.buildLap(lap));
   }
 
   /**
-   * 构建单个Lap
+   * Build single Lap
    */
   private buildLap(lap: LapMesgType): void {
     this.writeMesg("lap", {
@@ -311,14 +311,14 @@ export class FITEncoder {
   }
 
   /**
-   * 构建Records
+   * Build Records
    */
   private buildRecords(records: RecordMesgType[]): void {
     records.forEach((record) => this.buildRecord(record));
   }
 
   /**
-   * 构建单个Record
+   * Build single Record
    */
   private buildRecord(record: RecordMesgType): void {
     this.writeMesg("record", {
@@ -337,7 +337,7 @@ export class FITEncoder {
   }
 
   /**
-   * 构建Event
+   * Build Event
    */
   private buildEvent(event: EventMesgType): void {
     this.writeMesg("event", {
@@ -351,7 +351,7 @@ export class FITEncoder {
   }
 
   /**
-   * 构建Activity
+   * Build Activity
    */
   private buildActivity(activity: ActivityMesgType): void {
     this.writeMesg("activity", {
@@ -371,7 +371,7 @@ export class FITEncoder {
   }
 
   /**
-   * 构建Course
+   * Build Course
    */
   private buildCourse(course: { name: string; sport: string }): void {
     this.writeMesg("course", {
@@ -380,17 +380,17 @@ export class FITEncoder {
     });
   }
 
-  // ==================== 数据转换和验证方法 ====================
+  // ==================== Data Conversion and Validation Methods ====================
 
   /**
-   * 从Laps构建Events
+   * Build Events from Laps
    */
   private buildEventsFromLaps(
     laps: LapMesgType[],
     events: EventMesgType[]
   ): void {
     laps.forEach((lap, index) => {
-      // 开始事件
+      // Start event
       if (lap.startTime) {
         events.push({
           timestamp: lap.startTime,
@@ -400,7 +400,7 @@ export class FITEncoder {
         });
       }
 
-      // 结束事件
+      // End event
       if (lap.timestamp) {
         events.push({
           timestamp: lap.timestamp,
@@ -413,7 +413,7 @@ export class FITEncoder {
   }
 
   /**
-   * 从Session构建Activity
+   * Build Activity from Session
    */
   private buildActivityFromSession(
     session: SessionMesgType,
@@ -431,7 +431,7 @@ export class FITEncoder {
   }
 
   /**
-   * 解析时间戳
+   * Parse timestamp
    */
   private parseTimestamp(timestamp: string | number): number {
     if (typeof timestamp === "number") {
@@ -443,7 +443,7 @@ export class FITEncoder {
   }
 
   /**
-   * 转换坐标为半圆单位
+   * Convert coordinates to semicircles
    */
   private convertToSemicircles(coord?: number): number | undefined {
     if (coord === undefined || coord === null) return undefined;
@@ -451,21 +451,21 @@ export class FITEncoder {
   }
 
   /**
-   * 验证必要字段
+   * Validate required fields
    */
   private validateRequiredFields(fitData: FITFileType): void {
     if (!fitData.sessionMesgs || fitData.sessionMesgs.length === 0) {
-      throw new Error("FIT文件必须包含至少一个Session");
+      throw new Error("FIT file must contain at least one Session");
     }
   }
 
-  // ==================== 低级别消息写入方法 ====================
+  // ==================== Low-level Message Writing Methods ====================
 
   /**
-   * 写入消息
+   * Write message
    */
   private writeMesg(mesgName: string, values: Record<string, any>): void {
-    // 过滤掉undefined值
+    // Filter out undefined values
     const filteredValues = Object.fromEntries(
       Object.entries(values).filter(([_, value]) => value !== undefined)
     );
@@ -487,10 +487,10 @@ export class FITEncoder {
     this.messages.push(mesg.dataRecord);
   }
 
-  // ==================== 文件生成属性 ====================
+  // ==================== File Generation Properties ====================
 
   /**
-   * 获取Blob对象
+   * Get Blob object
    */
   get blob(): Blob {
     const content = [this.header, ...this.messages, this.trailer];
@@ -498,21 +498,21 @@ export class FITEncoder {
   }
 
   /**
-   * 获取数据长度
+   * Get data length
    */
   get dataLen(): number {
     return this.messages.reduce((len, message) => len + message.byteLength, 0);
   }
 
   /**
-   * 获取数据CRC
+   * Get data CRC
    */
   get dataCrc(): number {
     return this.messages.reduce((dataCrc, message) => crc(message, dataCrc), 0);
   }
 
   /**
-   * 获取文件头
+   * Get file header
    */
   get header(): ArrayBuffer {
     const dv = new DataView(new ArrayBuffer(HEADER_LEN));
@@ -527,7 +527,7 @@ export class FITEncoder {
   }
 
   /**
-   * 获取文件尾
+   * Get file trailer
    */
   get trailer(): ArrayBuffer {
     const dv = new DataView(new ArrayBuffer(2));
@@ -536,13 +536,13 @@ export class FITEncoder {
     return dv.buffer;
   }
 
-  // ==================== 兼容性方法 (Deprecated) ====================
+  // ==================== Compatibility Methods (Deprecated) ====================
 
   /**
-   * @deprecated 使用 encode() 替代
+   * @deprecated Use encode() instead
    */
   async encoder(fitData: FITFileType): Promise<Buffer> {
-    console.warn("encoder() 方法已废弃，请使用 encode() 方法");
+    console.warn("encoder() method is deprecated, please use encode() method");
     return this.encode(fitData);
   }
 }

@@ -1,4 +1,4 @@
-// 移除旧的 FITProcessor 类，所有内容都在上面的流水线处理器中实现了
+// Removed old FITProcessor class, all content is implemented in the pipeline processors above
 
 import {
   IFITMessageConverter,
@@ -8,7 +8,7 @@ import {
 import { FITDecoderMesgs, FITFileType, FITContext } from "./types.js";
 
 /**
- * FIT 流水线阶段
+ * FIT pipeline stages
  */
 export enum FITPipelineStage {
   PARSE = "parse",
@@ -17,10 +17,10 @@ export enum FITPipelineStage {
   COMPLETE = "complete",
 }
 
-// ============ FIT 流水线处理器实现 ============
+// ============ FIT Pipeline Processor Implementation ============
 
 /**
- * FIT 流水线处理器接口
+ * FIT pipeline processor interface
  */
 export interface IFITPipelineProcessor {
   stage: FITPipelineStage;
@@ -28,7 +28,7 @@ export interface IFITPipelineProcessor {
 }
 
 /**
- * Parse处理器 - 解析二进制FIT数据为消息
+ * Parse processor - parses binary FIT data to messages
  */
 export class ParseProcessor implements IFITPipelineProcessor {
   stage = FITPipelineStage.PARSE;
@@ -37,41 +37,43 @@ export class ParseProcessor implements IFITPipelineProcessor {
     const startTime = Date.now();
 
     if (!context.rawData) {
-      throw new Error("FIT 数据不能为空");
+      throw new Error("FIT data cannot be empty");
     }
 
     try {
-      // 使用 FIT SDK 解析二进制数据
+      // Parse binary data using FIT SDK
       const rawMessages = await this.parseWithFitSDK(context.rawData);
       context.rawMessages = rawMessages;
 
       context.performance.parseTime = Date.now() - startTime;
       console.log(
-        `🔧 FIT 解析完成，包含消息类型: ${Object.keys(rawMessages).join(", ")}`
+        `🔧 FIT parsing completed, contains message types: ${Object.keys(
+          rawMessages
+        ).join(", ")}`
       );
 
       return context;
     } catch (error) {
-      throw new Error(`FIT 解析失败: ${(error as Error).message}`);
+      throw new Error(`FIT parsing failed: ${(error as Error).message}`);
     }
   }
 
   /**
-   * 使用 FIT SDK 解析二进制数据
+   * Parse binary data using FIT SDK
    */
   private async parseWithFitSDK(buffer: Buffer): Promise<FITDecoderMesgs> {
     const { Decoder, Stream } = await import("@garmin/fitsdk");
 
     const stream = Stream.fromBuffer(buffer);
     if (!Decoder.isFIT(stream)) {
-      throw new Error("不是有效的 FIT 文件");
+      throw new Error("Not a valid FIT file");
     }
 
     const decoder = new Decoder(stream);
     const { messages, errors } = decoder.read();
 
     if (errors && errors.length > 0) {
-      console.warn("FIT 解析警告:", errors);
+      console.warn("FIT parsing warnings:", errors);
     }
 
     return messages as FITDecoderMesgs;
@@ -79,7 +81,7 @@ export class ParseProcessor implements IFITPipelineProcessor {
 }
 
 /**
- * Extract处理器 - 提取和转换消息
+ * Extract processor - extracts and converts messages
  */
 export class ExtractProcessor implements IFITPipelineProcessor {
   stage = FITPipelineStage.EXTRACT;
@@ -92,12 +94,12 @@ export class ExtractProcessor implements IFITPipelineProcessor {
     const startTime = Date.now();
 
     if (!context.rawMessages) {
-      throw new Error("原始消息不能为空");
+      throw new Error("Raw messages cannot be empty");
     }
 
     const extractedMessages: FITDecoderMesgs = {};
 
-    // 遍历所有消息类型
+    // Iterate through all message types
     for (const [messageType, messages] of Object.entries(context.rawMessages)) {
       if (!Array.isArray(messages) || messages.length === 0) {
         extractedMessages[messageType] = messages;
@@ -107,11 +109,13 @@ export class ExtractProcessor implements IFITPipelineProcessor {
       const converters = this.getConverters(messageType);
 
       if (converters.length === 0) {
-        // 没有转换器，直接使用原始消息
+        // No converter, use raw messages directly
         extractedMessages[messageType] = messages;
-        console.log(`📋 消息类型 "${messageType}" 没有转换器，使用原始数据`);
+        console.log(
+          `📋 Message type "${messageType}" has no converter, using raw data`
+        );
       } else {
-        // 使用优先级最高的转换器
+        // Use highest priority converter
         const converter = converters[0];
         try {
           const convertedMessages = converter.convertMessages(
@@ -120,13 +124,13 @@ export class ExtractProcessor implements IFITPipelineProcessor {
           );
           extractedMessages[messageType] = convertedMessages;
           console.log(
-            `✅ 消息类型 "${messageType}" 使用转换器 ${converter.name}`
+            `✅ Message type "${messageType}" using converter ${converter.name}`
           );
         } catch (error) {
           context.errors.push(error as Error);
-          extractedMessages[messageType] = messages; // 回退到原始消息
+          extractedMessages[messageType] = messages; // Fallback to raw messages
           console.error(
-            `❌ 转换器 ${converter.name} 处理 ${messageType} 时出错:`,
+            `❌ Converter ${converter.name} error processing ${messageType}:`,
             error
           );
         }
@@ -141,7 +145,7 @@ export class ExtractProcessor implements IFITPipelineProcessor {
 }
 
 /**
- * Structure处理器 - 数据结构化
+ * Structure processor - data structuring
  */
 export class StructureProcessor implements IFITPipelineProcessor {
   stage = FITPipelineStage.STRUCTURE;
@@ -152,22 +156,22 @@ export class StructureProcessor implements IFITPipelineProcessor {
     const startTime = Date.now();
 
     if (!context.rawMessages) {
-      throw new Error("消息数据不能为空");
+      throw new Error("Message data cannot be empty");
     }
 
     let structuredResult: Partial<FITFileType> = {};
 
-    // 应用所有结构化插件
+    // Apply all structure plugins
     const plugins = this.getStructurePlugins();
 
     for (const plugin of plugins) {
       try {
         const pluginResult = plugin.structureData(context.rawMessages, context);
         structuredResult = { ...structuredResult, ...pluginResult };
-        console.log(`🔧 结构化插件 ${plugin.name} 处理完成`);
+        console.log(`🔧 Structure plugin ${plugin.name} processing completed`);
       } catch (error) {
         context.errors.push(error as Error);
-        console.error(`❌ 结构化插件 ${plugin.name} 出错:`, error);
+        console.error(`❌ Structure plugin ${plugin.name} error:`, error);
       }
     }
 
@@ -179,7 +183,7 @@ export class StructureProcessor implements IFITPipelineProcessor {
 }
 
 /**
- * Complete处理器 - 最终处理和清理
+ * Complete processor - final processing and cleanup
  */
 export class CompleteProcessor implements IFITPipelineProcessor {
   stage = FITPipelineStage.COMPLETE;
@@ -187,7 +191,7 @@ export class CompleteProcessor implements IFITPipelineProcessor {
   async process(context: FITContext): Promise<FITContext> {
     context.performance.endTime = Date.now();
 
-    // 记录性能指标
+    // Record performance metrics
     const totalTime =
       context.performance.endTime - context.performance.startTime;
     context.metadata.set("performance", {
@@ -197,7 +201,7 @@ export class CompleteProcessor implements IFITPipelineProcessor {
       structureTime: context.performance.structureTime,
     });
 
-    // 更新统计信息
+    // Update statistics
     if (context.stats) {
       context.stats.endTime = Date.now();
       if (context.rawMessages) {
@@ -207,13 +211,13 @@ export class CompleteProcessor implements IFITPipelineProcessor {
       }
     }
 
-    console.log(`✅ FIT 处理完成，总耗时: ${totalTime}ms`);
+    console.log(`✅ FIT processing completed, total time: ${totalTime}ms`);
 
     return context;
   }
 
   /**
-   * 计算消息总数
+   * Count total messages
    */
   private countTotalMessages(messages: FITDecoderMesgs): number {
     let count = 0;

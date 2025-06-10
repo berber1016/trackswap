@@ -240,15 +240,15 @@ export interface TrksegType {
   extensions?: ExtensionsType;
 }
 
-// 避免循环引用，直接定义需要的接口
+// Avoid circular references, directly define needed interfaces
 export interface DecoderContext extends IProcessingContext {
   rawData?: Buffer;
   xmlContent?: string;
   tokens?: Token[];
   ast?: TokenAST;
   result?: GPX11Type;
-  // IProcessingContext 已经包含了 metadata、errors、warnings、stats
-  // 这里添加 GPX 特定的性能统计
+  // IProcessingContext already includes metadata, errors, warnings, stats
+  // Here we add GPX-specific performance statistics
   performance: {
     startTime: number;
     tokenizeTime?: number;

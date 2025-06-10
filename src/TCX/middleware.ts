@@ -2,29 +2,31 @@ import { Token, TokenAST } from "../types.js";
 import { BaseTCXMiddleware } from "./base.js";
 import { TCXContext } from "./types.js";
 
-// ============ 示例中间件 ============
+// ============ Example Middleware ============
 
 /**
- * 性能监控中间件
+ * TCX performance monitoring middleware
  */
-export class PerformanceMiddleware extends BaseTCXMiddleware {
-  name = "performance-middleware";
-  description = "监控解析性能";
+export class TCXPerformanceMiddleware extends BaseTCXMiddleware {
+  name = "tcx-performance-middleware";
+  description = "Monitor TCX parsing performance";
 
   async onTokenize(tokens: Token[], context: TCXContext): Promise<Token[]> {
-    console.log(`Token化完成，生成了 ${tokens.length} 个token`);
+    console.log(
+      `TCX tokenization completed, generated ${tokens.length} tokens`
+    );
     return tokens;
   }
 
   async onAstGenerate(ast: TokenAST, context: TCXContext): Promise<TokenAST> {
     const nodeCount = this.countNodes(ast);
-    console.log(`AST生成完成，包含 ${nodeCount} 个节点`);
+    console.log(`TCX AST generation completed, contains ${nodeCount} nodes`);
     return ast;
   }
 
   async onComplete(result: any, context: TCXContext): Promise<any> {
     const performance = context.metadata.get("performance");
-    console.log("解析性能统计:", performance);
+    console.log("TCX parsing performance statistics:", performance);
     return result;
   }
 
@@ -40,46 +42,60 @@ export class PerformanceMiddleware extends BaseTCXMiddleware {
 }
 
 /**
- * 验证中间件
+ * TCX validation middleware
  */
-export class ValidationMiddleware extends BaseTCXMiddleware {
-  name = "validation-middleware";
-  description = "验证GPX数据的完整性";
+export class TCXValidationMiddleware extends BaseTCXMiddleware {
+  name = "tcx-validation-middleware";
+  description = "Validate TCX data integrity";
 
   async onComplete(result: any, context: TCXContext): Promise<any> {
-    const errors = this.validateGPX(result);
+    const errors = this.validateTCX(result);
     if (errors.length > 0) {
-      console.warn("GPX验证发现问题:", errors);
+      console.warn("TCX validation found issues:", errors);
       context.metadata.set("validation-errors", errors);
     } else {
-      console.log("GPX验证通过");
+      console.log("TCX validation passed");
     }
     return result;
   }
 
-  private validateGPX(gpx: any): string[] {
+  private validateTCX(tcx: any): string[] {
     const errors: string[] = [];
 
-    if (!gpx.version) {
-      errors.push("缺少GPX版本信息");
+    if (!tcx.version) {
+      errors.push("Missing TCX version information");
     }
 
-    if (!gpx.creator) {
-      errors.push("缺少GPX创建者信息");
+    if (!tcx.creator) {
+      errors.push("Missing TCX creator information");
     }
 
-    // 验证轨迹点
-    if (gpx.trk) {
-      for (const track of gpx.trk) {
-        if (track.trkseg) {
-          for (const segment of track.trkseg) {
-            if (segment.trkpt) {
-              for (const point of segment.trkpt) {
-                if (
-                  typeof point.lat !== "number" ||
-                  typeof point.lon !== "number"
-                ) {
-                  errors.push("轨迹点坐标无效");
+    // Validate activities
+    if (tcx.Activities && tcx.Activities.Activity) {
+      for (const activity of tcx.Activities.Activity) {
+        if (!activity.Id) {
+          errors.push("Activity missing ID information");
+        }
+
+        if (!activity.Lap || activity.Lap.length === 0) {
+          errors.push("Activity must contain at least one Lap");
+        }
+
+        // Validate laps
+        if (activity.Lap) {
+          for (const lap of activity.Lap) {
+            if (lap.Track) {
+              for (const track of lap.Track) {
+                if (track.Trackpoint) {
+                  for (const point of track.Trackpoint) {
+                    if (
+                      point.Position &&
+                      (!point.Position.LatitudeDegrees ||
+                        !point.Position.LongitudeDegrees)
+                    ) {
+                      errors.push("Invalid trackpoint coordinates");
+                    }
+                  }
                 }
               }
             }
@@ -92,13 +108,76 @@ export class ValidationMiddleware extends BaseTCXMiddleware {
   }
 }
 
-// ============ 默认转换器注册函数 ============
+/**
+ * TCX data enhancement middleware
+ */
+export class TCXEnhancementMiddleware extends BaseTCXMiddleware {
+  name = "tcx-enhancement-middleware";
+  description = "Enhance TCX data with additional calculated fields";
+
+  async onComplete(result: any, context: TCXContext): Promise<any> {
+    if (result.Activities && result.Activities.Activity) {
+      for (const activity of result.Activities.Activity) {
+        // Calculate total distance
+        activity.totalDistance = this.calculateTotalDistance(activity);
+
+        // Calculate total duration
+        activity.totalDuration = this.calculateTotalDuration(activity);
+
+        // Calculate average speed
+        if (activity.totalDistance && activity.totalDuration) {
+          activity.averageSpeed =
+            activity.totalDistance / activity.totalDuration;
+        }
+      }
+    }
+
+    console.log("TCX data enhancement completed");
+    return result;
+  }
+
+  private calculateTotalDistance(activity: any): number {
+    let totalDistance = 0;
+
+    if (activity.Lap) {
+      for (const lap of activity.Lap) {
+        if (lap.DistanceMeters) {
+          totalDistance += lap.DistanceMeters;
+        }
+      }
+    }
+
+    return totalDistance;
+  }
+
+  private calculateTotalDuration(activity: any): number {
+    let totalDuration = 0;
+
+    if (activity.Lap) {
+      for (const lap of activity.Lap) {
+        if (lap.TotalTimeSeconds) {
+          totalDuration += lap.TotalTimeSeconds;
+        }
+      }
+    }
+
+    return totalDuration;
+  }
+}
+
+// ============ Default Middleware Registration Function ============
 
 /**
- * 注册所有默认中间件
+ * Register all default middleware
  */
-export async function registerDefaultMiddlewares(decoder: any): Promise<void> {
-  const middlewares = [new PerformanceMiddleware(), new ValidationMiddleware()];
+export async function registerDefaultTCXMiddlewares(
+  decoder: any
+): Promise<void> {
+  const middlewares = [
+    new TCXPerformanceMiddleware(),
+    new TCXValidationMiddleware(),
+    new TCXEnhancementMiddleware(),
+  ];
 
   for (const middleware of middlewares) {
     await decoder.registerMiddleware(middleware);

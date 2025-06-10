@@ -132,7 +132,7 @@ const mesgDefns: MesgDefns = {
 };
 
 /**
- * 将 fieldDefns 和 fieldValues 转换为 fields 对象
+ * Convert fieldDefns and fieldValues to fields object
  */
 const fields = (
   fieldDefns: FieldDefn[],
@@ -189,7 +189,7 @@ export class Mesg {
   }
 
   /**
-   * 获取 defns，并获取了 size
+   * Get defns and obtain the size
    */
   get mesgDefn(): ProcessedMesgDefn {
     const fieldDefns = this.fields.map(({ number, type, value }) => {

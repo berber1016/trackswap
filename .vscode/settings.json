@@ -1,6 +1,7 @@
 {
     "cSpell.words": [
         "ageofdgpsdata",
+        "atemp",
         "Defn",
         "Defns",
         "dgpsid",
@@ -25,9 +26,11 @@
         "pdop",
         "rtept",
         "TCXXML",
+        "trackseg",
         "trkpt",
         "Trkseg",
         "vdop",
-        "WAKEBOARDING"
+        "WAKEBOARDING",
+        "Wpts"
     ]
 }

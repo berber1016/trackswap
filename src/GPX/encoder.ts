@@ -18,27 +18,27 @@ import {
 } from "./types.js";
 import { ExtensionsType } from "../types.js";
 
-// 配置 dayjs UTC 插件
+// Configure dayjs UTC plugin
 dayjs.extend(utc);
 
 /**
- * GPX 编码器 - 将 GPX11Type 数据编码为 GPX XML 格式
+ * GPX encoder - encodes GPX11Type data to GPX XML format
  */
 export class GPXEncoder {
   private compact: boolean;
 
   /**
-   * 构造函数
-   * @param options 编码器选项
+   * Constructor
+   * @param options Encoder options
    */
   constructor(options: { compact?: boolean } = {}) {
     this.compact = options.compact ?? true;
   }
 
-  // ==================== 公共接口 ====================
+  // ==================== Public Interface ====================
 
   /**
-   * 编码 GPX 数据为 Buffer
+   * Encode GPX data to Buffer
    */
   async encode(gpxData: GPX11Type): Promise<Buffer> {
     const xmlContent = this.buildGPXXML(gpxData);
@@ -46,16 +46,16 @@ export class GPXEncoder {
   }
 
   /**
-   * 编码 GPX 数据为 XML 字符串
+   * Encode GPX data to XML string
    */
   encodeToString(gpxData: GPX11Type): string {
     return this.buildGPXXML(gpxData);
   }
 
-  // ==================== 核心构建方法 ====================
+  // ==================== Core Build Methods ====================
 
   /**
-   * 构建完整的 GPX XML
+   * Build complete GPX XML
    */
   private buildGPXXML(gpxData: GPX11Type): string {
     const header = this.buildXMLHeader();
@@ -64,29 +64,29 @@ export class GPXEncoder {
 
     const xml = `${header}${content}\n${footer}`;
 
-    // 如果启用压缩模式，则压缩XML
+    // If compact mode is enabled, compress XML
     return this.compact ? this.compressXML(xml) : xml;
   }
 
   /**
-   * 压缩XML字符串，去掉多余的换行和空格
+   * Compress XML string, remove redundant newlines and spaces
    */
   private compressXML(xml: string): string {
     return (
       xml
-        // 去掉标签之间的换行和多余空格
+        // Remove newlines and extra spaces between tags
         .replace(/>\s+</g, "><")
-        // 去掉行首行尾的空白字符
+        // Remove leading and trailing whitespace from lines
         .replace(/^\s+|\s+$/gm, "")
-        // 将多个连续空格替换为单个空格
+        // Replace multiple consecutive spaces with single space
         .replace(/\s+/g, " ")
-        // 去掉整体的首尾空白
+        // Remove overall leading and trailing whitespace
         .trim()
     );
   }
 
   /**
-   * 构建 XML 头部
+   * Build XML header
    */
   private buildXMLHeader(): string {
     return [
@@ -107,7 +107,7 @@ export class GPXEncoder {
   }
 
   /**
-   * 构建 GPX 内容
+   * Build GPX content
    */
   private buildGPXContent(gpxData: GPX11Type): string {
     const {
@@ -118,7 +118,7 @@ export class GPXEncoder {
     } = gpxData;
     const parts: string[] = [];
 
-    // 按标准 GPX 顺序构建内容
+    // Build content in standard GPX order
     if (metadata) {
       parts.push(this.buildMetadata(metadata));
     }
@@ -138,10 +138,10 @@ export class GPXEncoder {
     return parts.join("\n");
   }
 
-  // ==================== 元数据构建 ====================
+  // ==================== Metadata Building ====================
 
   /**
-   * 构建 metadata 元素
+   * Build metadata element
    */
   private buildMetadata(metadata: MetadataType): string {
     const parts: string[] = ["<metadata>"];
@@ -180,7 +180,7 @@ export class GPXEncoder {
   }
 
   /**
-   * 构建 author 元素
+   * Build author element
    */
   private buildAuthor(author: PersonType): string {
     const parts: string[] = ["<author>"];
@@ -204,7 +204,7 @@ export class GPXEncoder {
   }
 
   /**
-   * 构建 copyright 元素
+   * Build copyright element
    */
   private buildCopyright(copyright: CopyrightType): string {
     const parts: string[] = [
@@ -219,10 +219,10 @@ export class GPXEncoder {
   }
 
   /**
-   * 构建 bounds 元素
+   * Build bounds element
    */
   private buildBounds(bounds: BoundsType): string {
-    // 确保数值安全转换为字符串并转义
+    // Ensure numeric values are safely converted to strings and escaped
     const minlat = this.escapeXMLAttribute((bounds.minlat || 0).toString());
     const minlon = this.escapeXMLAttribute((bounds.minlon || 0).toString());
     const maxlat = this.escapeXMLAttribute((bounds.maxlat || 0).toString());
@@ -231,10 +231,10 @@ export class GPXEncoder {
     return `<bounds minlat="${minlat}" minlon="${minlon}" maxlat="${maxlat}" maxlon="${maxlon}"/>`;
   }
 
-  // ==================== 航路点构建 ====================
+  // ==================== Waypoint Building ====================
 
   /**
-   * 构建航路点元素
+   * Build waypoint element
    */
   private buildWaypoint(
     point: WptType,
@@ -250,7 +250,7 @@ export class GPXEncoder {
       )}" lon="${this.escapeXMLAttribute(this.formatCoordinate(point.lon))}">`,
     ];
 
-    // 基础属性
+    // Basic attributes
     this.addOptionalElement(
       parts,
       "ele",
@@ -262,14 +262,14 @@ export class GPXEncoder {
       parts.push(this.buildTimeElement(point.time));
     }
 
-    // 添加速度和航向信息
+    // Add speed and course information
     this.addOptionalElement(parts, "speed", point.speed?.toString());
     this.addOptionalElement(parts, "course", point.course?.toString());
 
-    // GPX 标准属性
+    // GPX standard attributes
     this.addStandardWaypointElements(parts, point);
 
-    // 扩展属性
+    // Extension attributes
     if (point.extensions) {
       const processedExtensions = this.processPointExtensions(
         point,
@@ -285,10 +285,10 @@ export class GPXEncoder {
   }
 
   /**
-   * 添加标准航路点元素
+   * Add standard waypoint elements
    */
   private addStandardWaypointElements(parts: string[], point: WptType): void {
-    // 按 GPX 标准顺序添加元素
+    // Add elements in GPX standard order
     this.addOptionalElement(parts, "magvar", point.magvar?.toString());
     this.addOptionalElement(
       parts,
@@ -319,17 +319,17 @@ export class GPXEncoder {
     this.addOptionalElement(parts, "dgpsid", point.dgpsid?.toString());
   }
 
-  // ==================== 路线构建 ====================
+  // ==================== Route Building ====================
 
   /**
-   * 构建 rte 元素
+   * Build rte element
    */
   private buildRoute(route: RteType): string {
     const parts: string[] = ["<rte>"];
 
     this.addRouteTrackCommonElements(parts, route);
 
-    // 路线点
+    // Route points
     if (route.rtept) {
       route.rtept?.forEach((point) => {
         parts.push(this.buildWaypoint(point, "rtept"));
@@ -344,17 +344,17 @@ export class GPXEncoder {
     return parts.join("\n  ");
   }
 
-  // ==================== 轨迹构建 ====================
+  // ==================== Track Building ====================
 
   /**
-   * 构建轨迹元素
+   * Build track element
    */
   private buildTrack(track: TrkType): string {
     const parts: string[] = ["<trk>"];
 
     this.addRouteTrackCommonElements(parts, track);
 
-    // 轨迹段
+    // Track segments
     if (track.trkseg) {
       track.trkseg.forEach((segment) => {
         parts.push(this.buildTrackSegment(segment));
@@ -370,7 +370,7 @@ export class GPXEncoder {
   }
 
   /**
-   * 构建轨迹段元素
+   * Build track segment element
    */
   private buildTrackSegment(segment: TrksegType): string {
     const parts: string[] = ["<trkseg>"];
@@ -390,7 +390,7 @@ export class GPXEncoder {
   }
 
   /**
-   * 添加路线和轨迹的公共元素
+   * Add common elements for route and track
    */
   private addRouteTrackCommonElements(
     parts: string[],
@@ -409,10 +409,10 @@ export class GPXEncoder {
     this.addOptionalElement(parts, "type", item.type);
   }
 
-  // ==================== 扩展处理 ====================
+  // ==================== Extension Processing ====================
 
   /**
-   * 处理点的扩展属性
+   * Process point extension attributes
    */
   private processPointExtensions(
     point: WptType,
@@ -420,7 +420,7 @@ export class GPXEncoder {
   ): ExtensionsType {
     const result = this.deepClone(extensions);
 
-    // 处理各种扩展
+    // Process various extensions
     const trackPointExt = this.buildTrackPointExtension(point, extensions);
     if (Object.keys(trackPointExt).length > 0) {
       result["gpxtpx:TrackPointExtension"] = trackPointExt;
@@ -440,7 +440,7 @@ export class GPXEncoder {
   }
 
   /**
-   * 构建 TrackPoint 扩展
+   * Build TrackPoint extension
    */
   private buildTrackPointExtension(
     point: WptType,
@@ -466,7 +466,7 @@ export class GPXEncoder {
   }
 
   /**
-   * 构建 Power 扩展
+   * Build Power extension
    */
   private buildPowerExtension(
     point: WptType,
@@ -479,7 +479,7 @@ export class GPXEncoder {
   }
 
   /**
-   * 构建 GPX 扩展
+   * Build GPX extensions
    */
   private buildGpxExtensions(
     point: WptType,
@@ -505,7 +505,7 @@ export class GPXEncoder {
   }
 
   /**
-   * 构建扩展元素
+   * Build extensions element
    */
   private buildExtensions(extensions: ExtensionsType): string {
     const content = this.buildExtensionContent(extensions);
@@ -513,7 +513,7 @@ export class GPXEncoder {
   }
 
   /**
-   * 递归构建扩展内容
+   * Recursively build extension content
    */
   private buildExtensionContent(extension: ExtensionsType): string {
     return Object.entries(extension)
@@ -531,10 +531,10 @@ export class GPXEncoder {
       .join("");
   }
 
-  // ==================== 辅助方法 ====================
+  // ==================== Helper Methods ====================
 
   /**
-   * 构建 link 元素
+   * Build link element
    */
   private buildLink(link: LinkType): string {
     const parts: string[] = [
@@ -549,7 +549,7 @@ export class GPXEncoder {
   }
 
   /**
-   * 添加多个 link 元素
+   * Add multiple link elements
    */
   private addLinks(parts: string[], links: LinkType | LinkType[]): void {
     const linkArray = Array.isArray(links) ? links : [links];
@@ -559,25 +559,25 @@ export class GPXEncoder {
   }
 
   /**
-   * 构建时间元素
+   * Build time element
    */
   private buildTimeElement(time: Date | string): string {
-    // 如果是字符串且已经是正确的ISO格式，直接使用
+    // If it's a string and already in correct ISO format, use it directly
     if (typeof time === "string") {
-      // 检查是否已经是标准的ISO 8601格式
+      // Check if it's already in standard ISO 8601 format
       if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z?$/.test(time)) {
         return `<time>${time}</time>`;
       }
     }
 
-    // 对于Date对象或其他格式的字符串，使用dayjs处理
-    // 生成不带毫秒的UTC时间格式，与原始GPX文件格式保持一致
+    // For Date objects or other format strings, use dayjs processing
+    // Generate UTC time format without milliseconds, consistent with original GPX file format
     const timeStr = dayjs(time).utc().format("YYYY-MM-DDTHH:mm:ss[Z]");
     return `<time>${timeStr}</time>`;
   }
 
   /**
-   * 添加可选元素
+   * Add optional element
    */
   private addOptionalElement(
     parts: string[],
@@ -594,7 +594,7 @@ export class GPXEncoder {
   }
 
   /**
-   * 验证坐标有效性
+   * Validate coordinate validity
    */
   private isValidCoordinate(lat: number, lon: number): boolean {
     return (
@@ -608,14 +608,14 @@ export class GPXEncoder {
   }
 
   /**
-   * 格式化坐标
+   * Format coordinate
    */
   private formatCoordinate(coord: number): string {
     return this.roundTo(coord, 6).toString();
   }
 
   /**
-   * 格式化高程
+   * Format elevation
    */
   private formatElevation = (elevation: string): string => {
     const num = parseFloat(elevation);
@@ -623,7 +623,7 @@ export class GPXEncoder {
   };
 
   /**
-   * 数字四舍五入
+   * Round number
    */
   private roundTo(num: number, precision: number): number {
     const factor = Math.pow(10, precision);
@@ -631,7 +631,7 @@ export class GPXEncoder {
   }
 
   /**
-   * XML 转义
+   * XML escape
    */
   private escapeXML(text: string): string {
     return text
@@ -643,7 +643,7 @@ export class GPXEncoder {
   }
 
   /**
-   * XML 属性值转义（专门用于属性值的安全转义）
+   * XML attribute value escape (specifically for safe escaping of attribute values)
    */
   private escapeXMLAttribute(text: string): string {
     if (typeof text !== "string") {
@@ -661,7 +661,7 @@ export class GPXEncoder {
   }
 
   /**
-   * 深度拷贝
+   * Deep clone
    */
   private deepClone<T>(obj: T): T {
     if (obj === null || typeof obj !== "object") {
@@ -685,10 +685,10 @@ export class GPXEncoder {
     return cloned;
   }
 
-  // ==================== 向后兼容 ====================
+  // ==================== Backward Compatibility ====================
 
   /**
-   * @deprecated 使用 encode() 替代
+   * @deprecated Use encode() instead
    */
   encoder(node: GPX11Type): Promise<Buffer> {
     return this.encode(node);

@@ -14,10 +14,10 @@ import {
   DecoderContext,
 } from "./types.js";
 
-// ============ 核心转换器 ============
+// ============ Core Converters ============
 
 /**
- * WPT转换器
+ * WPT converter
  */
 export class WptConverter extends BaseGPXConverter {
   name = "wpt-converter";
@@ -26,7 +26,7 @@ export class WptConverter extends BaseGPXConverter {
 
   convert(ast: TokenAST, context: DecoderContext): WptType | undefined {
     if (!this.hasRequiredAttributes(ast, ["lat", "lon"])) {
-      console.error(`${this.name}: 缺少必需的lat或lon属性`);
+      console.error(`${this.name}: Missing required lat or lon attribute`);
       return undefined;
     }
 
@@ -35,13 +35,13 @@ export class WptConverter extends BaseGPXConverter {
       lon: this.parseFloat(ast.attributes!["lon"]),
     };
 
-    // 处理其他属性
+    // Process other attributes
     this.extractAttributes(ast, wpt, {
       lat: "lat",
       lon: "lon",
     });
 
-    // 处理子节点
+    // Process child nodes
     this.processChildren(ast, wpt, {
       ele: (child, target) => (target.ele = this.parseFloat(child.value)),
       time: (child, target) =>
@@ -66,7 +66,7 @@ export class WptConverter extends BaseGPXConverter {
       magvar: (child, target) => (target.magvar = this.parseFloat(child.value)),
       dgpsid: (child, target) => (target.dgpsid = this.parseFloat(child.value)),
       extensions: (child, target) => {
-        // 查找extensions转换器
+        // Find extensions converter
         const decoder = context.metadata.get("decoder");
         if (decoder) {
           target.extensions = decoder.convertExtensions(child);
@@ -85,7 +85,7 @@ export class WptConverter extends BaseGPXConverter {
 }
 
 /**
- * Route转换器
+ * Route converter
  */
 export class RteConverter extends BaseGPXConverter {
   name = "rte-converter";
@@ -131,7 +131,7 @@ export class RteConverter extends BaseGPXConverter {
 }
 
 /**
- * Track转换器
+ * Track converter
  */
 export class TrkConverter extends BaseGPXConverter {
   name = "trk-converter";
@@ -177,7 +177,7 @@ export class TrkConverter extends BaseGPXConverter {
 }
 
 /**
- * Track Segment转换器
+ * Track Segment converter
  */
 export class TrksegConverter extends BaseGPXConverter {
   name = "trkseg-converter";
@@ -207,7 +207,7 @@ export class TrksegConverter extends BaseGPXConverter {
 }
 
 /**
- * Link转换器
+ * Link converter
  */
 export class LinkConverter extends BaseGPXConverter {
   name = "link-converter";
@@ -230,7 +230,7 @@ export class LinkConverter extends BaseGPXConverter {
 }
 
 /**
- * Metadata转换器
+ * Metadata converter
  */
 export class MetadataConverter extends BaseGPXConverter {
   name = "metadata-converter";
@@ -283,7 +283,7 @@ export class MetadataConverter extends BaseGPXConverter {
 }
 
 /**
- * Person转换器
+ * Person converter
  */
 export class PersonConverter extends BaseGPXConverter {
   name = "person-converter";
@@ -292,13 +292,13 @@ export class PersonConverter extends BaseGPXConverter {
   convert(ast: TokenAST, context: DecoderContext): PersonType | undefined {
     const person: PersonType = {};
 
-    // 如果author标签直接包含文本值（如 <author>Matschi1000</author>）
+    // If author tag directly contains text value (e.g. <author>Matschi1000</author>)
     if (ast.value && !ast.children?.length) {
       person.name = this.parseString(ast.value);
       return person;
     }
 
-    // 处理包含子元素的情况（如 <author><name>...</name><email>...</email></author>）
+    // Handle cases with child elements (e.g. <author><name>...</name><email>...</email></author>)
     this.processChildren(ast, person, {
       name: (child, target) => (target.name = this.parseString(child.value)),
       email: (child, target) => {
@@ -316,7 +316,7 @@ export class PersonConverter extends BaseGPXConverter {
 }
 
 /**
- * Email转换器
+ * Email converter
  */
 export class EmailConverter extends BaseGPXConverter {
   name = "email-converter";
@@ -336,7 +336,7 @@ export class EmailConverter extends BaseGPXConverter {
 }
 
 /**
- * Copyright转换器
+ * Copyright converter
  */
 export class CopyrightConverter extends BaseGPXConverter {
   name = "copyright-converter";
@@ -360,7 +360,7 @@ export class CopyrightConverter extends BaseGPXConverter {
 }
 
 /**
- * Bounds转换器
+ * Bounds converter
  */
 export class BoundsConverter extends BaseGPXConverter {
   name = "bounds-converter";

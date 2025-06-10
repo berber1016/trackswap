@@ -5,6 +5,8 @@ example/
 
 garmin/
 
+PUBLISH.md
+
 # Development files
 tsconfig.json
 .gitignore

@@ -2,11 +2,11 @@ import { Parser } from "htmlparser2";
 import { Token } from "../types.js";
 
 /**
- * XML 解析工具类
+ * XML parsing utility class
  */
 export class XMLUtils {
   /**
-   * 将 XML 内容转换为 Token 数组
+   * Convert XML content to Token array
    */
   static tokenizeXML(xmlContent: string): Token[] {
     const tokens: Token[] = [];
@@ -40,17 +40,17 @@ export class XMLUtils {
   }
 
   /**
-   * 压缩 XML 字符串（移除多余空白）
+   * Compress XML string (remove extra whitespace)
    */
   static compressXML(xmlContent: string): string {
     return xmlContent
-      .replace(/>\s+</g, "><") // 移除标签间的空白
-      .replace(/\s+/g, " ") // 将多个空白字符替换为单个空格
+      .replace(/>\s+</g, "><") // Remove whitespace between tags
+      .replace(/\s+/g, " ") // Replace multiple whitespace characters with single space
       .trim();
   }
 
   /**
-   * 格式化 XML 字符串（添加缩进）
+   * Format XML string (add indentation)
    */
   static formatXML(xmlContent: string, indentSize: number = 2): string {
     const indent = " ".repeat(indentSize);
@@ -64,13 +64,13 @@ export class XMLUtils {
 
       if (char === "<") {
         if (nextChar === "/") {
-          // 闭合标签
+          // Closing tag
           depth--;
           if (!inTag) {
             formatted += "\n" + indent.repeat(depth);
           }
         } else if (nextChar !== "?" && nextChar !== "!") {
-          // 开始标签
+          // Opening tag
           if (!inTag) {
             formatted += "\n" + indent.repeat(depth);
           }
@@ -80,7 +80,7 @@ export class XMLUtils {
       } else if (char === ">") {
         inTag = false;
         if (nextChar === "<" && xmlContent[i + 2] === "/") {
-          // 自闭合标签或紧跟闭合标签
+          // Self-closing tag or immediately followed by closing tag
           depth--;
         }
       }
@@ -92,7 +92,7 @@ export class XMLUtils {
   }
 
   /**
-   * 验证 XML 格式
+   * Validate XML format
    */
   static validateXML(xmlContent: string): { isValid: boolean; error?: string } {
     try {
@@ -109,7 +109,7 @@ export class XMLUtils {
   }
 
   /**
-   * 提取 XML 声明信息
+   * Extract XML declaration information
    */
   static extractXMLDeclaration(xmlContent: string): {
     version?: string;
@@ -135,7 +135,7 @@ export class XMLUtils {
   }
 
   /**
-   * 转义 XML 特殊字符
+   * Escape XML special characters
    */
   static escapeXML(text: string): string {
     return text
@@ -147,7 +147,7 @@ export class XMLUtils {
   }
 
   /**
-   * 反转义 XML 特殊字符
+   * Unescape XML special characters
    */
   static unescapeXML(text: string): string {
     return text

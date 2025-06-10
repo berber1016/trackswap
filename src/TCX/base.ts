@@ -7,57 +7,57 @@ import {
 } from "../core/base.js";
 import { TCXContext, TCXFileType } from "./types.js";
 
-// ============ TCX 特定接口定义 ============
+// ============ TCX Specific Interface Definitions ============
 
 /**
- * TCX 插件接口（继承通用插件接口）
+ * TCX plugin interface (inherits generic plugin interface)
  */
 export interface ITCXPlugin extends IPlugin<TCXContext> {}
 
 /**
- * TCX 转换器插件接口（继承通用转换器接口）
+ * TCX converter plugin interface (inherits generic converter interface)
  */
 export interface ITCXConverterPlugin extends IConverterPlugin<TCXContext> {}
 
 /**
- * TCX 中间件插件接口（继承通用中间件接口）
+ * TCX middleware plugin interface (inherits generic middleware interface)
  */
 export interface ITCXMiddlewarePlugin
   extends IMiddlewarePlugin<TCXContext, TCXFileType> {}
 
-// ============ TCX 特定基础类 ============
+// ============ TCX Specific Base Classes ============
 
 /**
- * TCX 基础转换器抽象类（继承通用基础转换器）
+ * TCX base converter abstract class (inherits generic base converter)
  */
 export abstract class BaseTCXConverter
   extends BaseConverter<TCXContext>
   implements ITCXConverterPlugin
 {
-  // TCX 特定的工具方法可以在这里添加
+  // TCX specific utility methods can be added here
 
   /**
-   * 解析 TCX 心率值
+   * Parse TCX heart rate value
    */
   protected parseHeartRate(
     value: string | number | undefined
   ): number | undefined {
     const hr = this.parseFloat(value);
-    return hr > 0 && hr < 300 ? hr : undefined; // 合理的心率范围
+    return hr > 0 && hr < 300 ? hr : undefined; // Reasonable heart rate range
   }
 
   /**
-   * 解析 TCX 时间格式（ISO 8601）
+   * Parse TCX time format (ISO 8601)
    */
   protected parseTCXTime(value: string | undefined): Date | undefined {
     if (!value) return undefined;
-    // TCX 使用 ISO 8601 格式
+    // TCX uses ISO 8601 format
     const date = new Date(value);
     return isNaN(date.getTime()) ? undefined : date;
   }
 
   /**
-   * 解析 TCX 距离值（米）
+   * Parse TCX distance value (meters)
    */
   protected parseDistance(
     value: string | number | undefined
@@ -67,7 +67,7 @@ export abstract class BaseTCXConverter
   }
 
   /**
-   * 解析 TCX 速度值（m/s）
+   * Parse TCX speed value (m/s)
    */
   protected parseSpeed(value: string | number | undefined): number | undefined {
     const speed = this.parseFloat(value);
@@ -75,7 +75,7 @@ export abstract class BaseTCXConverter
   }
 
   /**
-   * 解析 TCX 海拔值（米）
+   * Parse TCX altitude value (meters)
    */
   protected parseAltitude(
     value: string | number | undefined
@@ -84,7 +84,7 @@ export abstract class BaseTCXConverter
   }
 
   /**
-   * 解析 TCX 坐标值（纬度/经度）
+   * Parse TCX coordinate value (latitude/longitude)
    */
   protected parseCoordinate(
     value: string | number | undefined
@@ -95,16 +95,16 @@ export abstract class BaseTCXConverter
 }
 
 /**
- * TCX 基础中间件抽象类（继承通用基础中间件）
+ * TCX base middleware abstract class (inherits generic base middleware)
  */
 export abstract class BaseTCXMiddleware
   extends BaseMiddleware<TCXContext, TCXFileType>
   implements ITCXMiddlewarePlugin
 {
-  // TCX 特定的中间件逻辑可以在这里添加
+  // TCX specific middleware logic can be added here
 
   async onError(error: Error, context: TCXContext): Promise<void> {
-    console.error(`TCX中间件 ${this.name} 处理错误:`, error);
-    context.warnings.push(`中间件 ${this.name} 错误: ${error.message}`);
+    console.error(`TCX middleware ${this.name} processing error:`, error);
+    context.warnings.push(`Middleware ${this.name} error: ${error.message}`);
   }
 }

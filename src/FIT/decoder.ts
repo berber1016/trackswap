@@ -19,14 +19,14 @@ import {
 } from "./plugins.js";
 
 /**
- * FIT 解码器 - 遵循 GPX 风格的插件架构
+ * FIT decoder - follows GPX style plugin architecture
  */
 export class FITDecoder {
   private converterPlugins = new Map<string, IFITMessageConverter[]>();
-  private registeredPlugins = new Set<string>(); // 跟踪已注册的插件名
+  private registeredPlugins = new Set<string>(); // Track registered plugin names
   private structurePlugins: IFITStructurePlugin[] = [];
   private middlewarePlugins: IFITMiddlewarePlugin[] = [];
-  private processors: IFITPipelineProcessor[] = []; // 固定的核心处理器
+  private processors: IFITPipelineProcessor[] = []; // Fixed core processors
   private initialized = false;
   private defaultPluginsRegistered = false;
 
@@ -35,10 +35,10 @@ export class FITDecoder {
   }
 
   /**
-   * 初始化流水线 - 注册固定的核心处理器
+   * Initialize pipeline - register fixed core processors
    */
   private initializePipeline(): void {
-    // 固定的核心处理器，不允许用户修改
+    // Fixed core processors, not modifiable by users
     this.processors = [
       new ParseProcessor(),
       new ExtractProcessor((messageType: string) =>
@@ -48,11 +48,13 @@ export class FITDecoder {
       new CompleteProcessor(),
     ];
 
-    console.log("🔧 FIT核心流水线处理器已初始化 (固定不可修改)");
+    console.log(
+      "🔧 FIT core pipeline processors initialized (fixed and not modifiable)"
+    );
   }
 
   /**
-   * 自动注册默认插件
+   * Auto-register default plugins
    */
   private async registerDefaultPlugins(): Promise<void> {
     if (this.defaultPluginsRegistered) return;
@@ -70,12 +72,12 @@ export class FITDecoder {
 
     this.defaultPluginsRegistered = true;
     console.log(
-      "✅ 默认FIT结构化插件已自动注册 (FileHeader, Session, Course等)"
+      "✅ Default FIT structure plugins auto-registered (FileHeader, Session, Course, etc.)"
     );
   }
 
   /**
-   * 为指定消息类型添加转换器，按优先级排序
+   * Add converter for specific message type, sorted by priority
    */
   private addConverterForMessageType(
     messageType: string,
@@ -88,55 +90,55 @@ export class FITDecoder {
     const converters = this.converterPlugins.get(messageType)!;
     converters.push(converter);
 
-    // 按优先级排序（数字越小优先级越高）
+    // Sort by priority (lower number = higher priority)
     converters.sort((a, b) => (a.priority || 100) - (b.priority || 100));
   }
 
   /**
-   * 添加结构化插件
+   * Add structure plugin
    */
   private addStructurePlugin(plugin: IFITStructurePlugin): void {
     this.structurePlugins.push(plugin);
-    // 按优先级排序
+    // Sort by priority
     this.structurePlugins.sort(
       (a, b) => (a.priority || 100) - (b.priority || 100)
     );
   }
 
   /**
-   * 注册消息转换器插件
+   * Register message converter plugin
    */
   async registerMessageConverter(plugin: IFITMessageConverter): Promise<void> {
-    // 检查插件是否已注册
+    // Check if plugin is already registered
     if (this.registeredPlugins.has(plugin.name)) {
-      throw new Error(`消息转换器插件 ${plugin.name} 已存在`);
+      throw new Error(`Message converter plugin ${plugin.name} already exists`);
     }
 
-    // 注册支持的消息类型
+    // Register supported message types
     plugin.supportedMessageTypes.forEach((messageType) => {
       this.addConverterForMessageType(messageType, plugin);
     });
     this.registeredPlugins.add(plugin.name);
 
-    // 显示优先级信息
+    // Show priority information
     const priorityInfo =
-      plugin.priority !== undefined ? ` (优先级: ${plugin.priority})` : "";
+      plugin.priority !== undefined ? ` (priority: ${plugin.priority})` : "";
     console.log(
-      `📦 已注册FIT消息转换器: ${
+      `📦 Registered FIT message converter: ${
         plugin.name
-      }${priorityInfo}, 支持消息类型: ${plugin.supportedMessageTypes.join(
+      }${priorityInfo}, supported message types: ${plugin.supportedMessageTypes.join(
         ", "
       )}`
     );
 
-    // 显示消息类型的转换器优先级顺序
+    // Show converter priority order for message types
     plugin.supportedMessageTypes.forEach((messageType) => {
       const converters = this.converterPlugins.get(messageType) || [];
       const converterNames = converters.map(
         (c) => `${c.name}(${c.priority || 100})`
       );
       console.log(
-        `   📋 消息类型 "${messageType}" 转换器优先级: ${converterNames.join(
+        `   📋 Message type "${messageType}" converter priority: ${converterNames.join(
           " > "
         )}`
       );
@@ -144,23 +146,25 @@ export class FITDecoder {
   }
 
   /**
-   * 注册结构化插件
+   * Register structure plugin
    */
   async registerStructurePlugin(plugin: IFITStructurePlugin): Promise<void> {
     if (this.registeredPlugins.has(plugin.name)) {
-      throw new Error(`结构化插件 ${plugin.name} 已存在`);
+      throw new Error(`Structure plugin ${plugin.name} already exists`);
     }
 
     this.addStructurePlugin(plugin);
     this.registeredPlugins.add(plugin.name);
 
     const priorityInfo =
-      plugin.priority !== undefined ? ` (优先级: ${plugin.priority})` : "";
-    console.log(`🏗️ 已注册FIT结构化插件: ${plugin.name}${priorityInfo}`);
+      plugin.priority !== undefined ? ` (priority: ${plugin.priority})` : "";
+    console.log(
+      `🏗️ Registered FIT structure plugin: ${plugin.name}${priorityInfo}`
+    );
   }
 
   /**
-   * 注册中间件插件
+   * Register middleware plugin
    */
   async registerMiddleware(plugin: IFITMiddlewarePlugin): Promise<void> {
     const existingIndex = this.middlewarePlugins.findIndex(
@@ -168,17 +172,17 @@ export class FITDecoder {
     );
     if (existingIndex !== -1) {
       this.middlewarePlugins[existingIndex] = plugin;
-      console.log(`🔄 已更新FIT中间件: ${plugin.name}`);
+      console.log(`🔄 Updated FIT middleware: ${plugin.name}`);
     } else {
       this.middlewarePlugins.push(plugin);
-      // 按优先级排序
+      // Sort by priority
       this.middlewarePlugins.sort(
         (a, b) => (a.priority || 100) - (b.priority || 100)
       );
-      console.log(`🔌 已注册FIT中间件: ${plugin.name}`);
+      console.log(`🔌 Registered FIT middleware: ${plugin.name}`);
     }
 
-    // 显示中间件支持的钩子
+    // Show supported hooks for middleware
     const hooks = [];
     if (plugin.onParse) hooks.push("onParse");
     if (plugin.onExtractMessages) hooks.push("onExtractMessages");
@@ -187,12 +191,12 @@ export class FITDecoder {
     if (plugin.onError) hooks.push("onError");
 
     if (hooks.length > 0) {
-      console.log(`   🎣 支持的钩子: ${hooks.join(", ")}`);
+      console.log(`   🎣 Supported hooks: ${hooks.join(", ")}`);
     }
   }
 
   /**
-   * 获取消息类型转换器（返回优先级最高的）
+   * Get message type converter (returns highest priority one)
    */
   getConverter(messageType: string): IFITMessageConverter | undefined {
     const converters = this.converterPlugins.get(messageType);
@@ -200,22 +204,22 @@ export class FITDecoder {
   }
 
   /**
-   * 获取指定消息类型的所有转换器（按优先级排序）
+   * Get all converters for specified message type (sorted by priority)
    */
   getConverters(messageType: string): IFITMessageConverter[] {
     return this.converterPlugins.get(messageType) || [];
   }
 
   /**
-   * 移除插件
+   * Remove plugin
    */
   unregisterPlugin(pluginName: string): boolean {
     if (!this.registeredPlugins.has(pluginName)) {
-      console.warn(`FIT插件 ${pluginName} 不存在`);
+      console.warn(`FIT plugin ${pluginName} does not exist`);
       return false;
     }
 
-    // 从消息转换器中移除
+    // Remove from message converters
     for (const [messageType, converters] of this.converterPlugins) {
       const index = converters.findIndex(
         (plugin) => plugin.name === pluginName
@@ -228,7 +232,7 @@ export class FITDecoder {
       }
     }
 
-    // 从结构化插件中移除
+    // Remove from structure plugins
     const structureIndex = this.structurePlugins.findIndex(
       (plugin) => plugin.name === pluginName
     );
@@ -236,7 +240,7 @@ export class FITDecoder {
       this.structurePlugins.splice(structureIndex, 1);
     }
 
-    // 从中间件中移除
+    // Remove from middleware
     const middlewareIndex = this.middlewarePlugins.findIndex(
       (plugin) => plugin.name === pluginName
     );
@@ -245,22 +249,22 @@ export class FITDecoder {
     }
 
     this.registeredPlugins.delete(pluginName);
-    console.log(`🗑️ 已移除FIT插件: ${pluginName}`);
+    console.log(`🗑️ Removed FIT plugin: ${pluginName}`);
     return true;
   }
 
   /**
-   * 初始化解码器
+   * Initialize decoder
    */
   async initialize(): Promise<void> {
     if (this.initialized) return;
 
-    // 首先注册默认插件
+    // Register default plugins first
     await this.registerDefaultPlugins();
 
     const context = this.createContext();
 
-    // 初始化所有插件
+    // Initialize all plugins
     const allPlugins = [
       ...Array.from(this.converterPlugins.values()).flat(),
       ...this.structurePlugins,
@@ -271,7 +275,10 @@ export class FITDecoder {
       try {
         await plugin.initialize?.(context);
       } catch (error) {
-        console.error(`FIT插件 ${plugin.name} 初始化失败:`, error);
+        console.error(
+          `FIT plugin ${plugin.name} initialization failed:`,
+          error
+        );
       }
     }
 
@@ -279,14 +286,14 @@ export class FITDecoder {
   }
 
   /**
-   * 销毁解码器
+   * Destroy decoder
    */
   async destroy(): Promise<void> {
     if (!this.initialized) return;
 
     const context = this.createContext();
 
-    // 销毁所有插件
+    // Destroy all plugins
     const allPlugins = [
       ...Array.from(this.converterPlugins.values()).flat(),
       ...this.structurePlugins,
@@ -297,7 +304,7 @@ export class FITDecoder {
       try {
         await plugin.destroy?.(context);
       } catch (error) {
-        console.error(`FIT插件 ${plugin.name} 销毁失败:`, error);
+        console.error(`FIT plugin ${plugin.name} destruction failed:`, error);
       }
     }
 
@@ -305,7 +312,7 @@ export class FITDecoder {
   }
 
   /**
-   * 创建解码上下文
+   * Create decode context
    */
   private createContext(): FITContext {
     return {
@@ -324,7 +331,7 @@ export class FITDecoder {
   }
 
   /**
-   * 执行中间件钩子
+   * Execute middleware hook
    */
   private async executeMiddlewareHook<T>(
     hookName: keyof IFITMiddlewarePlugin,
@@ -349,7 +356,7 @@ export class FITDecoder {
   }
 
   /**
-   * 主解析方法 - 固定的流水线 + 灵活的中间件
+   * Main parse method - fixed pipeline + flexible middleware
    */
   async parseByBuffer(
     buffer: Buffer,
@@ -364,17 +371,17 @@ export class FITDecoder {
     let context = this.createContext();
     context.rawData = buffer;
     context.userData = options.userData;
-    // 在上下文中传递解码器实例引用
+    // Pass decoder instance reference in context
     context.metadata.set("decoder", this);
 
     try {
-      // 固定的流水线阶段顺序执行
+      // Fixed pipeline stage sequential execution
       for (const processor of this.processors) {
         try {
-          // 1. 执行核心处理器
+          // 1. Execute core processor
           context = await processor.process(context);
 
-          // 2. 根据阶段执行对应的中间件钩子
+          // 2. Execute corresponding middleware hooks based on stage
           switch (processor.stage) {
             case FITPipelineStage.PARSE:
               if (context.rawData) {
@@ -419,18 +426,21 @@ export class FITDecoder {
         } catch (error) {
           context.errors.push(error as Error);
 
-          // 执行错误处理中间件
+          // Execute error handling middleware
           for (const middleware of this.middlewarePlugins) {
             await middleware.onError?.(error as Error, context);
           }
 
-          console.error(`FIT流水线阶段 ${processor.stage} 处理失败:`, error);
+          console.error(
+            `FIT pipeline stage ${processor.stage} processing failed:`,
+            error
+          );
         }
       }
 
       return context.result || ({} as FITFileType);
     } catch (error) {
-      console.error("FIT解析失败:", error);
+      console.error("FIT parsing failed:", error);
       throw error;
     }
   }

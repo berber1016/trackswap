@@ -1,91 +1,91 @@
 import { ExtensionsType, Token, TokenAST } from "../types.js";
 
-// ============ 核心接口定义 ============
+// ============ Core Interface Definitions ============
 
 /**
- * 通用插件接口
+ * Generic plugin interface
  */
 export interface IPlugin<TContext = any> {
-  /** 插件名称 */
+  /** Plugin name */
   name: string;
-  /** 插件版本 */
+  /** Plugin version */
   version?: string;
-  /** 插件描述 */
+  /** Plugin description */
   description?: string;
-  /** 依赖的其他插件 */
+  /** Dependencies on other plugins */
   dependencies?: string[];
-  /** 支持的标签 */
+  /** Supported tags */
   supportedTags?: string[];
 
-  /** 插件初始化 */
+  /** Plugin initialization */
   initialize?(context: TContext): Promise<void> | void;
-  /** 插件销毁 */
+  /** Plugin destruction */
   destroy?(context: TContext): Promise<void> | void;
-  /** 插件验证 */
+  /** Plugin validation */
   validate?(context: TContext): Promise<boolean> | boolean;
 }
 
 /**
- * 通用转换器插件接口
+ * Generic converter plugin interface
  */
 export interface IConverterPlugin<TContext = any> extends IPlugin<TContext> {
-  /** 转换方法 */
+  /** Conversion method */
   convert(ast: TokenAST, context: TContext): any | undefined;
-  /** 是否支持该标签 */
+  /** Whether it supports the tag */
   supports(tag: string): boolean;
-  /** 优先级（数字越小优先级越高） */
+  /** Priority (lower number = higher priority) */
   priority?: number;
 }
 
 /**
- * 通用中间件插件接口
+ * Generic middleware plugin interface
  */
 export interface IMiddlewarePlugin<TContext = any, TResult = any>
   extends IPlugin<TContext> {
-  /** 优先级（数字越小优先级越高） */
+  /** Priority (lower number = higher priority) */
   priority?: number;
-  /** 在tokenize阶段执行 */
+  /** Execute during tokenize stage */
   onTokenize?(tokens: Token[], context: TContext): Promise<Token[]> | Token[];
-  /** 在AST生成阶段执行 */
+  /** Execute during AST generation stage */
   onAstGenerate?(
     ast: TokenAST,
     context: TContext
   ): Promise<TokenAST> | TokenAST;
-  /** 在转换阶段执行 */
+  /** Execute during conversion stage */
   onConvert?(result: any, context: TContext): Promise<any> | any;
-  /** 在完成阶段执行 */
+  /** Execute during completion stage */
   onComplete?(result: TResult, context: TContext): Promise<TResult> | TResult;
-  /** 错误处理 */
+  /** Error handling */
   onError?(error: Error, context: TContext): Promise<void> | void;
 }
 
-// ============ 通用上下文接口 ============
+// ============ Generic Context Interface ============
 
 /**
- * 通用处理上下文
+ * Generic processing context
  */
 export interface IProcessingContext {
-  /** 元数据存储 */
+  /** Metadata storage */
   metadata: Map<string, any>;
-  /** 错误列表 */
+  /** Error list */
   errors: Error[];
-  /** 警告列表 */
+  /** Warning list */
   warnings: string[];
-  /** 处理统计信息 */
+  /** Processing statistics */
   stats: {
     startTime: number;
     endTime?: number;
     processedTokens: number;
     convertedElements: number;
   };
-  /** 用户自定义数据 */
+  /** User-defined data */
   userData?: Record<string, any>;
 }
 
-// ============ 基础工具类 ============
+// ============ Base Utility Classes ============
 
 /**
- * 通用基础转换器抽象类
+ * Generic base converter abstract class
  */
 export abstract class BaseConverter<
   TContext extends IProcessingContext = IProcessingContext
@@ -114,7 +114,7 @@ export abstract class BaseConverter<
     return true;
   }
 
-  // ============ 通用工具方法 ============
+  // ============ Generic Utility Methods ============
 
   protected parseFloat(value: string | number | undefined): number {
     if (typeof value === "number") return value;
@@ -187,10 +187,10 @@ export abstract class BaseConverter<
     return ast.children?.filter((c) => c.tag === tag) || [];
   }
 
-  // ============ 扩展处理工具 ============
+  // ============ Extension Processing Tools ============
 
   /**
-   * 通用的 Extensions 处理方法
+   * Generic Extensions processing method
    */
   protected convertExtensions(extensionsAST: TokenAST): ExtensionsType {
     const extensions: ExtensionsType = {};
@@ -203,7 +203,7 @@ export abstract class BaseConverter<
   }
 
   /**
-   * 递归转换 Extensions 内容
+   * Recursively convert Extensions content
    */
   protected convertExtensionContent(extension: TokenAST): any {
     if (extension.children?.length) {
@@ -219,7 +219,7 @@ export abstract class BaseConverter<
 }
 
 /**
- * 通用基础中间件抽象类
+ * Generic base middleware abstract class
  */
 export abstract class BaseMiddleware<
   TContext extends IProcessingContext = IProcessingContext,
@@ -253,6 +253,6 @@ export abstract class BaseMiddleware<
   }
 
   async onError(error: Error, context: TContext): Promise<void> {
-    console.error(`中间件 ${this.name} 处理错误:`, error);
+    console.error(`Middleware ${this.name} processing error:`, error);
   }
 }

@@ -28,10 +28,10 @@ import {
   WorkoutType,
 } from "./types.js";
 
-// ============ 基础元素转换器 ============
+// ============ Basic Element Converters ============
 
 /**
- * 位置转换器
+ * Position converter
  */
 export class PositionConverter extends BaseTCXConverter {
   name = "PositionConverter";
@@ -52,7 +52,7 @@ export class PositionConverter extends BaseTCXConverter {
 }
 
 /**
- * 轨迹点转换器
+ * Trackpoint converter
  */
 export class TrackpointConverter extends BaseTCXConverter {
   name = "TrackpointConverter";
@@ -74,7 +74,7 @@ export class TrackpointConverter extends BaseTCXConverter {
       DistanceMeters: (child, target) =>
         (target.DistanceMeters = this.parseFloat(child.value)),
       HeartRateBpm: (child, target) => {
-        // 处理两种格式：<HeartRateBpm>123</HeartRateBpm> 或 <HeartRateBpm><Value>123</Value></HeartRateBpm>
+        // Handle two formats: <HeartRateBpm>123</HeartRateBpm> or <HeartRateBpm><Value>123</Value></HeartRateBpm>
         if (child.value) {
           target.HeartRateBpm = this.parseFloat(child.value);
         } else {
@@ -127,7 +127,7 @@ export class TrackpointConverter extends BaseTCXConverter {
 }
 
 /**
- * 轨迹转换器
+ * Track converter
  */
 export class TrackConverter extends BaseTCXConverter {
   name = "TrackConverter";
@@ -155,7 +155,7 @@ export class TrackConverter extends BaseTCXConverter {
 }
 
 /**
- * 活动圈数转换器
+ * Activity lap converter
  */
 export class ActivityLapConverter extends BaseTCXConverter {
   name = "ActivityLapConverter";
@@ -164,7 +164,7 @@ export class ActivityLapConverter extends BaseTCXConverter {
   convert(ast: TokenAST, context: TCXContext): ActivityLapType | undefined {
     const lap: ActivityLapType = {};
 
-    // 提取属性
+    // Extract attributes
     this.extractAttributes(ast, lap, {
       StartTime: "Id" as any,
     });
@@ -224,7 +224,7 @@ export class ActivityLapConverter extends BaseTCXConverter {
 }
 
 /**
- * 活动转换器
+ * Activity converter
  */
 export class ActivityConverter extends BaseTCXConverter {
   name = "ActivityConverter";
@@ -236,7 +236,7 @@ export class ActivityConverter extends BaseTCXConverter {
       Lap: [],
     };
 
-    // 提取属性
+    // Extract attributes
     this.extractAttributes(ast, activity, {
       Sport: "Sport" as any,
     });
@@ -262,14 +262,14 @@ export class ActivityConverter extends BaseTCXConverter {
   private convertTraining(ast: TokenAST): any {
     const training: any = {};
 
-    // 处理属性
+    // Process attributes
     if (ast.attributes) {
       Object.entries(ast.attributes).forEach(([key, value]) => {
         training[key] = value;
       });
     }
 
-    // 处理子元素
+    // Process child elements
     ast.children?.forEach((child) => {
       training[child.tag] = this.convertExtensionContent(child);
     });
@@ -311,7 +311,7 @@ export class ActivityConverter extends BaseTCXConverter {
 }
 
 /**
- * 活动列表转换器
+ * Activity list converter
  */
 export class ActivityListConverter extends BaseTCXConverter {
   name = "ActivityListConverter";
@@ -349,7 +349,7 @@ export class ActivityListConverter extends BaseTCXConverter {
 }
 
 /**
- * 多运动会话转换器
+ * Multi-sport session converter
  */
 export class MultiSportSessionConverter extends BaseTCXConverter {
   name = "MultiSportSessionConverter";
@@ -384,10 +384,10 @@ export class MultiSportSessionConverter extends BaseTCXConverter {
   }
 }
 
-// ============ 辅助转换器 ============
+// ============ Helper Converters ============
 
 /**
- * 抽象来源转换器
+ * Abstract source converter
  */
 export class AbstractSourceConverter extends BaseTCXConverter {
   name = "AbstractSourceConverter";

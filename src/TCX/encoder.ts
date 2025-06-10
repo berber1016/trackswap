@@ -21,27 +21,27 @@ import {
 } from "./types.js";
 import { ExtensionsType } from "../types.js";
 
-// 配置 dayjs UTC 插件
+// Configure dayjs UTC plugin
 dayjs.extend(utc);
 
 /**
- * TCX 编码器 - 将 TCXFileType 数据编码为 TCX XML 格式
+ * TCX encoder - encodes TCXFileType data to TCX XML format
  */
 export class TCXEncoder {
   private compact: boolean;
 
   /**
-   * 构造函数
-   * @param options 编码器选项
+   * Constructor
+   * @param options Encoder options
    */
   constructor(options: { compact?: boolean } = {}) {
     this.compact = options.compact ?? true;
   }
 
-  // ==================== 公共接口 ====================
+  // ==================== Public Interface ====================
 
   /**
-   * 编码 TCX 数据为 Buffer
+   * Encode TCX data to Buffer
    */
   async encode(tcxData: TCXFileType): Promise<Buffer> {
     const xmlContent = this.buildTCXXML(tcxData);
@@ -49,16 +49,16 @@ export class TCXEncoder {
   }
 
   /**
-   * 编码 TCX 数据为 XML 字符串
+   * Encode TCX data to XML string
    */
   encodeToString(tcxData: TCXFileType): string {
     return this.buildTCXXML(tcxData);
   }
 
-  // ==================== 核心构建方法 ====================
+  // ==================== Core Build Methods ====================
 
   /**
-   * 构建完整的 TCX XML
+   * Build complete TCX XML
    */
   private buildTCXXML(tcxData: TCXFileType): string {
     const header = this.buildXMLHeader(tcxData);
@@ -67,29 +67,29 @@ export class TCXEncoder {
 
     const xml = `${header}${content}\n${footer}`;
 
-    // 如果启用压缩模式，则压缩XML
+    // If compact mode is enabled, compress XML
     return this.compact ? this.compressXML(xml) : xml;
   }
 
   /**
-   * 压缩XML字符串，去掉多余的换行和空格
+   * Compress XML string, remove redundant newlines and spaces
    */
   private compressXML(xml: string): string {
     return (
       xml
-        // 去掉标签之间的换行和多余空格
+        // Remove newlines and extra spaces between tags
         .replace(/>\s+</g, "><")
-        // 去掉行首行尾的空白字符
+        // Remove leading and trailing whitespace from lines
         .replace(/^\s+|\s+$/gm, "")
-        // 将多个连续空格替换为单个空格
+        // Replace multiple consecutive spaces with single space
         .replace(/\s+/g, " ")
-        // 去掉整体的首尾空白
+        // Remove overall leading and trailing whitespace
         .trim()
     );
   }
 
   /**
-   * 构建 XML 头部
+   * Build XML header
    */
   private buildXMLHeader(tcxData: TCXFileType): string {
     const version = tcxData.version || "1.0";
@@ -116,12 +116,12 @@ export class TCXEncoder {
   }
 
   /**
-   * 构建 TCX 内容
+   * Build TCX content
    */
   private buildTCXContent(tcxData: TCXFileType): string {
     const parts: string[] = [];
 
-    // 按标准 TCX 顺序构建内容
+    // Build content in standard TCX order
     if (tcxData.Folders) {
       parts.push(this.buildFolders(tcxData.Folders));
     }
@@ -149,10 +149,10 @@ export class TCXEncoder {
     return parts.join("\n");
   }
 
-  // ==================== 结构元素构建 ====================
+  // ==================== Structure Element Building ====================
 
   /**
-   * 构建 Folders 元素
+   * Build Folders element
    */
   private buildFolders(folders: FolderType): string {
     const parts: string[] = ["<Folders>"];
@@ -166,8 +166,8 @@ export class TCXEncoder {
     }
 
     if (folders.Courses) {
-      // TODO: 处理 Courses
-      console.warn("Courses in Folders 暂未实现");
+      // TODO: Handle Courses
+      console.warn("Courses in Folders not yet implemented");
     }
 
     parts.push("</Folders>");
@@ -175,7 +175,7 @@ export class TCXEncoder {
   }
 
   /**
-   * 构建 History 元素
+   * Build History element
    */
   private buildHistory(history: HistoryType): string {
     const parts: string[] = ["<History>"];
@@ -211,15 +211,15 @@ export class TCXEncoder {
   }
 
   /**
-   * 构建 HistoryFolder 元素
+   * Build HistoryFolder element
    */
   private buildHistoryFolder(folder: any): string {
-    // TODO: 实现详细的 HistoryFolder 构建
+    // TODO: Implement detailed HistoryFolder building
     return "";
   }
 
   /**
-   * 构建 Activities 元素
+   * Build Activities element
    */
   private buildActivities(activities: ActivityListType): string {
     const parts: string[] = ["<Activities>"];
@@ -241,33 +241,33 @@ export class TCXEncoder {
   }
 
   /**
-   * 构建单个 Activity 元素
+   * Build single Activity element
    */
   private buildActivity(activity: ActivityType): string {
     const sport = activity.Sport || "Other";
     const parts: string[] = [`<Activity Sport="${sport}">`];
 
-    // ID 是必需的
+    // ID is required
     parts.push(`<Id>${this.formatTime(activity.Id)}</Id>`);
 
-    // Lap 是必需的
+    // Lap is required
     if (activity.Lap && activity.Lap.length > 0) {
       activity.Lap.forEach((lap) => {
         parts.push(this.buildActivityLap(lap));
       });
     }
 
-    // 可选元素
+    // Optional elements
     this.addOptionalElement(parts, "Notes", activity.Notes);
 
     if (activity.Training) {
-      // TODO: 实现 Training 元素
-      console.warn("Activity Training 暂未实现");
+      // TODO: Implement Training element
+      console.warn("Activity Training not yet implemented");
     }
 
     if (activity.Creator) {
-      // TODO: 实现 Creator 元素
-      console.warn("Activity Creator 暂未实现");
+      // TODO: Implement Creator element
+      console.warn("Activity Creator not yet implemented");
     }
 
     if (activity.Extensions) {
@@ -279,12 +279,12 @@ export class TCXEncoder {
   }
 
   /**
-   * 构建 ActivityLap 元素
+   * Build ActivityLap element
    */
   private buildActivityLap(lap: ActivityLapType): string {
     const parts: string[] = ["<Lap>"];
 
-    // 时间相关
+    // Time related
     this.addOptionalNumericElement(
       parts,
       "TotalTimeSeconds",
@@ -294,7 +294,7 @@ export class TCXEncoder {
     this.addOptionalNumericElement(parts, "MaximumSpeed", lap.MaximumSpeed);
     this.addOptionalNumericElement(parts, "Calories", lap.Calories);
 
-    // 心率
+    // Heart rate
     if (lap.AverageHeartRateBpm) {
       parts.push(
         `<AverageHeartRateBpm xsi:type="HeartRateInBeatsPerMinute_t"><Value>${lap.AverageHeartRateBpm}</Value></AverageHeartRateBpm>`
@@ -306,7 +306,7 @@ export class TCXEncoder {
       );
     }
 
-    // 其他属性
+    // Other attributes
     this.addOptionalElement(parts, "Intensity", lap.Intensity);
 
     if (lap.Cadence) {
@@ -315,7 +315,7 @@ export class TCXEncoder {
 
     this.addOptionalElement(parts, "TriggerMethod", lap.TriggerMethod);
 
-    // Track 数据
+    // Track data
     if (lap.Track) {
       lap.Track.forEach((track) => {
         parts.push(this.buildTrack(track));
@@ -333,7 +333,7 @@ export class TCXEncoder {
   }
 
   /**
-   * 构建 Track 元素
+   * Build Track element
    */
   private buildTrack(track: TrackType): string {
     const parts: string[] = ["<Track>"];
@@ -349,22 +349,22 @@ export class TCXEncoder {
   }
 
   /**
-   * 构建 Trackpoint 元素
+   * Build Trackpoint element
    */
   private buildTrackpoint(trackpoint: TrackpointType): string {
     const parts: string[] = ["<Trackpoint>"];
 
-    // 时间（通常是必需的）
+    // Time (usually required)
     if (trackpoint.Time) {
       parts.push(`<Time>${this.formatTime(trackpoint.Time)}</Time>`);
     }
 
-    // 位置
+    // Position
     if (trackpoint.Position) {
       parts.push(this.buildPosition(trackpoint.Position));
     }
 
-    // 数值属性
+    // Numeric attributes
     this.addOptionalNumericElement(
       parts,
       "AltitudeMeters",
@@ -376,22 +376,22 @@ export class TCXEncoder {
       trackpoint.DistanceMeters
     );
 
-    // 心率
+    // Heart rate
     if (trackpoint.HeartRateBpm) {
       parts.push(
         `<HeartRateBpm xsi:type="HeartRateInBeatsPerMinute_t"><Value>${trackpoint.HeartRateBpm}</Value></HeartRateBpm>`
       );
     }
 
-    // 踏频
+    // Cadence
     if (trackpoint.Cadence) {
       parts.push(this.buildCadence(trackpoint.Cadence));
     }
 
-    // 传感器状态
+    // Sensor state
     this.addOptionalElement(parts, "SensorState", trackpoint.SensorState);
 
-    // 扩展
+    // Extensions
     if (trackpoint.Extensions) {
       parts.push(this.buildExtensions(trackpoint.Extensions));
     }
@@ -401,7 +401,7 @@ export class TCXEncoder {
   }
 
   /**
-   * 构建 Position 元素
+   * Build Position element
    */
   private buildPosition(position: PositionType): string {
     const parts: string[] = ["<Position>"];
@@ -427,14 +427,14 @@ export class TCXEncoder {
   }
 
   /**
-   * 构建 Cadence 元素
+   * Build Cadence element
    */
   private buildCadence(cadence: CadenceType): string {
     return `<Cadence><Low>${cadence.Low}</Low><High>${cadence.High}</High></Cadence>`;
   }
 
   /**
-   * 构建 MultiSportSession 元素
+   * Build MultiSportSession element
    */
   private buildMultiSportSession(session: MultiSportSessionType): string {
     const parts: string[] = ["<MultiSportSession>"];
@@ -460,7 +460,7 @@ export class TCXEncoder {
   }
 
   /**
-   * 构建 FirstSport 元素
+   * Build FirstSport element
    */
   private buildFirstSport(firstSport: FirstSportType): string {
     const parts: string[] = ["<FirstSport>"];
@@ -474,13 +474,13 @@ export class TCXEncoder {
   }
 
   /**
-   * 构建 NextSport 元素
+   * Build NextSport element
    */
   private buildNextSport(nextSport: NextSportType): string {
     const parts: string[] = ["<NextSport>"];
 
     if (nextSport.Transition) {
-      // Transition 使用 ActivityLap 结构
+      // Transition uses ActivityLap structure
       parts.push(
         `<Transition>${this.buildActivityLap(
           nextSport.Transition
@@ -497,25 +497,25 @@ export class TCXEncoder {
   }
 
   /**
-   * 构建 Workouts 元素
+   * Build Workouts element
    */
   private buildWorkouts(workouts: WorkoutListType): string {
-    // TODO: 实现 Workouts 构建
-    console.warn("Workouts 构建暂未实现");
+    // TODO: Implement Workouts building
+    console.warn("Workouts building not yet implemented");
     return "<Workouts></Workouts>";
   }
 
   /**
-   * 构建 Courses 元素
+   * Build Courses element
    */
   private buildCourses(courses: CourseListType): string {
-    // TODO: 实现 Courses 构建
-    console.warn("Courses 构建暂未实现");
+    // TODO: Implement Courses building
+    console.warn("Courses building not yet implemented");
     return "<Courses></Courses>";
   }
 
   /**
-   * 构建 Author 元素
+   * Build Author element
    */
   private buildAuthor(author: AbstractSourceType): string {
     const parts: string[] = ["<Author>"];
@@ -526,10 +526,10 @@ export class TCXEncoder {
     return parts.join("");
   }
 
-  // ==================== 扩展处理 ====================
+  // ==================== Extension Processing ====================
 
   /**
-   * 构建扩展元素
+   * Build extensions element
    */
   private buildExtensions(extensions: ExtensionsType): string {
     const content = this.buildExtensionContent(extensions);
@@ -537,7 +537,7 @@ export class TCXEncoder {
   }
 
   /**
-   * 递归构建扩展内容
+   * Recursively build extension content
    */
   private buildExtensionContent(extension: ExtensionsType): string {
     return Object.entries(extension)
@@ -555,26 +555,26 @@ export class TCXEncoder {
       .join("");
   }
 
-  // ==================== 辅助方法 ====================
+  // ==================== Helper Methods ====================
 
   /**
-   * 格式化时间
+   * Format time
    */
   private formatTime(time: Date | string): string {
-    // 如果是字符串且已经是正确的ISO格式，直接使用
+    // If it's a string and already in correct ISO format, use it directly
     if (typeof time === "string") {
-      // 检查是否已经是标准的ISO 8601格式
+      // Check if it's already in standard ISO 8601 format
       if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(time)) {
         return time;
       }
     }
 
-    // 对于Date对象或其他格式的字符串，使用dayjs处理
+    // For Date objects or other format strings, use dayjs processing
     return dayjs(time).utc().format("YYYY-MM-DDTHH:mm:ss[Z]");
   }
 
   /**
-   * 添加可选元素
+   * Add optional element
    */
   private addOptionalElement(
     parts: string[],
@@ -591,7 +591,7 @@ export class TCXEncoder {
   }
 
   /**
-   * 添加可选数值元素
+   * Add optional numeric element
    */
   private addOptionalNumericElement(
     parts: string[],
@@ -604,7 +604,7 @@ export class TCXEncoder {
   }
 
   /**
-   * 验证坐标有效性
+   * Validate coordinate validity
    */
   private isValidCoordinate(lat: number, lon: number): boolean {
     return (
@@ -618,14 +618,14 @@ export class TCXEncoder {
   }
 
   /**
-   * 格式化坐标
+   * Format coordinate
    */
   private formatCoordinate(coord: number): string {
     return this.roundTo(coord, 6).toString();
   }
 
   /**
-   * 数字四舍五入
+   * Round number
    */
   private roundTo(num: number, precision: number): number {
     const factor = Math.pow(10, precision);
@@ -633,7 +633,7 @@ export class TCXEncoder {
   }
 
   /**
-   * XML 转义
+   * XML escape
    */
   private escapeXML(text: string): string {
     return text
@@ -645,7 +645,7 @@ export class TCXEncoder {
   }
 
   /**
-   * XML 属性值转义（专门用于属性值的安全转义）
+   * XML attribute value escape (specifically for safe escaping of attribute values)
    */
   private escapeXMLAttribute(text: string): string {
     if (typeof text !== "string") {
@@ -663,7 +663,7 @@ export class TCXEncoder {
   }
 
   /**
-   * 深度拷贝
+   * Deep clone
    */
   private deepClone<T>(obj: T): T {
     if (obj === null || typeof obj !== "object") {
@@ -687,10 +687,10 @@ export class TCXEncoder {
     return cloned;
   }
 
-  // ==================== 向后兼容 ====================
+  // ==================== Backward Compatibility ====================
 
   /**
-   * @deprecated 使用 encode() 替代
+   * @deprecated Use encode() instead
    */
   encoder(node: TCXFileType): Promise<Buffer> {
     return this.encode(node);

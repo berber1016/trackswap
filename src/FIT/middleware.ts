@@ -1,17 +1,17 @@
 import { BaseFITMiddleware } from "./base.js";
 import { FITDecoderMesgs, FITFileType, FITContext } from "./types.js";
 
-// ============ 示例中间件 ============
+// ============ Example Middleware ============
 
 /**
- * 性能监控中间件
+ * Performance monitoring middleware
  */
 export class PerformanceMiddleware extends BaseFITMiddleware {
   name = "performance-middleware";
-  description = "监控FIT解析性能";
+  description = "Monitor FIT parsing performance";
 
   async onParse(buffer: Buffer, context: FITContext): Promise<Buffer> {
-    console.log(`🔧 开始解析FIT文件，大小: ${buffer.length} bytes`);
+    console.log(`🔧 Starting FIT file parsing, size: ${buffer.length} bytes`);
     return buffer;
   }
 
@@ -20,13 +20,15 @@ export class PerformanceMiddleware extends BaseFITMiddleware {
     context: FITContext
   ): Promise<FITDecoderMesgs> {
     const messageCount = this.countMessages(messages);
-    console.log(`📋 消息提取完成，包含 ${messageCount} 条消息`);
+    console.log(
+      `📋 Message extraction completed, contains ${messageCount} messages`
+    );
 
-    // 显示消息类型统计
+    // Show message type statistics
     const messageTypes = Object.keys(messages).filter(
       (key) => Array.isArray(messages[key]) && messages[key]!.length > 0
     );
-    console.log(`   消息类型: ${messageTypes.join(", ")}`);
+    console.log(`   Message types: ${messageTypes.join(", ")}`);
 
     return messages;
   }
@@ -36,7 +38,7 @@ export class PerformanceMiddleware extends BaseFITMiddleware {
     context: FITContext
   ): Promise<Partial<FITFileType>> {
     const structureInfo = this.analyzeStructure(result);
-    console.log(`🏗️ 数据结构化完成: ${structureInfo}`);
+    console.log(`🏗️ Data structuring completed: ${structureInfo}`);
     return result;
   }
 
@@ -45,16 +47,16 @@ export class PerformanceMiddleware extends BaseFITMiddleware {
     context: FITContext
   ): Promise<FITFileType> {
     const performance = context.metadata.get("performance");
-    console.log("⚡ FIT解析性能统计:", performance);
+    console.log("⚡ FIT parsing performance statistics:", performance);
 
-    // 显示最终结果统计
-    console.log(`✅ 解析完成: ${this.getSummary(result)}`);
+    // Show final result statistics
+    console.log(`✅ Parsing completed: ${this.getSummary(result)}`);
     return result;
   }
 
   async onError(error: Error, context: FITContext): Promise<void> {
-    console.error(`❌ FIT解析出错: ${error.message}`);
-    console.error(`   错误详情:`, error.stack);
+    console.error(`❌ FIT parsing error: ${error.message}`);
+    console.error(`   Error details:`, error.stack);
   }
 
   private countMessages(messages: FITDecoderMesgs): number {
@@ -74,36 +76,36 @@ export class PerformanceMiddleware extends BaseFITMiddleware {
       parts.push(`${result.sessionMesgs.length} sessions`);
     }
     if (result.fileIdMesgs?.length) {
-      parts.push(`文件ID`);
+      parts.push(`file ID`);
     }
     if (result.eventMesgs?.length) {
       parts.push(`${result.eventMesgs.length} events`);
     }
 
-    return parts.join(", ") || "无结构化数据";
+    return parts.join(", ") || "no structured data";
   }
 
   private getSummary(result: FITFileType): string {
     const parts: string[] = [];
 
     if (result.sessionMesgs?.length) {
-      parts.push(`${result.sessionMesgs.length}个会话`);
+      parts.push(`${result.sessionMesgs.length} sessions`);
     }
     if (result.fileIdMesgs?.length) {
       const fileId = result.fileIdMesgs[0];
-      parts.push(`类型:${fileId.type}, 厂商:${fileId.manufacturer}`);
+      parts.push(`type:${fileId.type}, manufacturer:${fileId.manufacturer}`);
     }
 
-    return parts.join(", ") || "空结果";
+    return parts.join(", ") || "empty result";
   }
 }
 
 /**
- * 数据验证中间件
+ * Data validation middleware
  */
 export class ValidationMiddleware extends BaseFITMiddleware {
   name = "validation-middleware";
-  description = "验证FIT数据的完整性";
+  description = "Validate FIT data integrity";
 
   async onComplete(
     result: FITFileType,
@@ -111,13 +113,13 @@ export class ValidationMiddleware extends BaseFITMiddleware {
   ): Promise<FITFileType> {
     const errors = this.validateFIT(result);
     if (errors.length > 0) {
-      console.warn("🚨 FIT验证发现问题:", errors);
+      console.warn("🚨 FIT validation found issues:", errors);
       context.metadata.set("validation-errors", errors);
 
-      // 将验证错误添加到上下文
+      // Add validation errors to context
       errors.forEach((error) => context.warnings.push(error));
     } else {
-      console.log("✅ FIT数据验证通过");
+      console.log("✅ FIT data validation passed");
     }
     return result;
   }
@@ -125,30 +127,30 @@ export class ValidationMiddleware extends BaseFITMiddleware {
   private validateFIT(fit: FITFileType): string[] {
     const errors: string[] = [];
 
-    // 验证文件ID
+    // Validate file ID
     if (!fit.fileIdMesgs || fit.fileIdMesgs.length === 0) {
-      errors.push("缺少文件ID信息");
+      errors.push("Missing file ID information");
     } else {
       const fileId = fit.fileIdMesgs[0];
       if (!fileId.type) {
-        errors.push("文件类型未指定");
+        errors.push("File type not specified");
       }
       if (!fileId.manufacturer) {
-        errors.push("制造商信息缺失");
+        errors.push("Manufacturer information missing");
       }
     }
 
-    // 验证会话数据
+    // Validate session data
     if (fit.sessionMesgs && fit.sessionMesgs.length > 0) {
       fit.sessionMesgs.forEach((session, index) => {
         if (!session.startTime) {
-          errors.push(`会话 ${index + 1} 缺少开始时间`);
+          errors.push(`Session ${index + 1} missing start time`);
         }
         if (!session.timestamp) {
-          errors.push(`会话 ${index + 1} 缺少结束时间`);
+          errors.push(`Session ${index + 1} missing end time`);
         }
         if (session.totalTimerTime === undefined) {
-          errors.push(`会话 ${index + 1} 缺少计时时间`);
+          errors.push(`Session ${index + 1} missing timer time`);
         }
       });
     }
@@ -158,24 +160,24 @@ export class ValidationMiddleware extends BaseFITMiddleware {
 }
 
 /**
- * 数据清理中间件
+ * Data cleanup middleware
  */
 export class DataCleanupMiddleware extends BaseFITMiddleware {
   name = "data-cleanup-middleware";
-  description = "清理和优化FIT数据";
+  description = "Clean and optimize FIT data";
 
   async onStructure(
     result: Partial<FITFileType>,
     context: FITContext
   ): Promise<Partial<FITFileType>> {
-    // 清理空数组和无效数据
+    // Clean empty arrays and invalid data
     return this.cleanupData(result);
   }
 
   private cleanupData(result: Partial<FITFileType>): Partial<FITFileType> {
     const cleaned = { ...result };
 
-    // 移除空数组
+    // Remove empty arrays
     Object.keys(cleaned).forEach((key) => {
       const value = (cleaned as any)[key];
       if (Array.isArray(value) && value.length === 0) {
@@ -183,24 +185,24 @@ export class DataCleanupMiddleware extends BaseFITMiddleware {
       }
     });
 
-    // 清理会话数据中的无效值
+    // Clean invalid values in session data
     if (cleaned.sessionMesgs) {
       cleaned.sessionMesgs = cleaned.sessionMesgs.filter(
         (session) => session.startTime && session.timestamp
       );
     }
 
-    console.log("🧹 数据清理完成");
+    console.log("🧹 Data cleanup completed");
     return cleaned;
   }
 }
 
 /**
- * 文件信息提取中间件
+ * File information extraction middleware
  */
 export class FileInfoMiddleware extends BaseFITMiddleware {
   name = "file-info-middleware";
-  description = "提取和显示文件基本信息";
+  description = "Extract and display basic file information";
 
   async onExtractMessages(
     messages: FITDecoderMesgs,
@@ -227,21 +229,21 @@ export class FileInfoMiddleware extends BaseFITMiddleware {
 
       context.metadata.set("file-info", fileInfo);
 
-      console.log("📄 文件信息:", {
-        类型: fileInfo.type,
-        制造商: fileInfo.manufacturer,
-        产品: fileInfo.product,
-        序列号: fileInfo.serialNumber,
-        创建时间: fileInfo.timeCreated,
+      console.log("📄 File information:", {
+        type: fileInfo.type,
+        manufacturer: fileInfo.manufacturer,
+        product: fileInfo.product,
+        serialNumber: fileInfo.serialNumber,
+        createdTime: fileInfo.timeCreated,
       });
     }
   }
 }
 
-// ============ 默认中间件注册函数 ============
+// ============ Default Middleware Registration Function ============
 
 /**
- * 注册所有默认中间件
+ * Register all default middlewares
  */
 export async function registerDefaultMiddlewares(decoder: any): Promise<void> {
   const middlewares = [

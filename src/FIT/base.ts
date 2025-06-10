@@ -1,66 +1,66 @@
 import { IPlugin, IProcessingContext, BaseConverter } from "../core/base.js";
 import { FITContext, FITDecoderMesgs, FITFileType } from "./types.js";
 
-// ============ FIT 特定接口定义 ============
+// ============ FIT Specific Interface Definitions ============
 
 /**
- * FIT 消息转换器插件接口
+ * FIT message converter plugin interface
  */
 export interface IFITMessageConverter extends IPlugin<FITContext> {
-  /** 支持的消息类型 */
+  /** Supported message types */
   supportedMessageTypes: string[];
-  /** 转换消息 */
+  /** Convert messages */
   convertMessages(messages: any[], context: FITContext): any;
-  /** 是否支持该消息类型 */
+  /** Whether it supports the message type */
   supports(messageType: string): boolean;
-  /** 优先级 */
+  /** Priority */
   priority?: number;
 }
 
 /**
- * FIT 数据结构化插件接口
+ * FIT data structuring plugin interface
  */
 export interface IFITStructurePlugin extends IPlugin<FITContext> {
-  /** 结构化数据 */
+  /** Structure data */
   structureData(
     messages: FITDecoderMesgs,
     context: FITContext
   ): Partial<FITFileType>;
-  /** 优先级 */
+  /** Priority */
   priority?: number;
 }
 
 /**
- * FIT 中间件插件接口
+ * FIT middleware plugin interface
  */
 export interface IFITMiddlewarePlugin extends IPlugin<FITContext> {
-  /** 优先级 */
+  /** Priority */
   priority?: number;
-  /** 在解析阶段执行 */
+  /** Execute during parse stage */
   onParse?(buffer: Buffer, context: FITContext): Promise<Buffer> | Buffer;
-  /** 在消息提取阶段执行 */
+  /** Execute during message extraction stage */
   onExtractMessages?(
     messages: FITDecoderMesgs,
     context: FITContext
   ): Promise<FITDecoderMesgs> | FITDecoderMesgs;
-  /** 在数据结构化阶段执行 */
+  /** Execute during data structuring stage */
   onStructure?(
     result: Partial<FITFileType>,
     context: FITContext
   ): Promise<Partial<FITFileType>> | Partial<FITFileType>;
-  /** 在完成阶段执行 */
+  /** Execute during completion stage */
   onComplete?(
     result: FITFileType,
     context: FITContext
   ): Promise<FITFileType> | FITFileType;
-  /** 错误处理 */
+  /** Error handling */
   onError?(error: Error, context: FITContext): Promise<void> | void;
 }
 
-// ============ 基础工具类 ============
+// ============ Base Utility Classes ============
 
 /**
- * FIT 消息转换器基类
+ * FIT message converter base class
  */
 export abstract class BaseFITMessageConverter implements IFITMessageConverter {
   abstract name: string;
@@ -86,7 +86,7 @@ export abstract class BaseFITMessageConverter implements IFITMessageConverter {
     return true;
   }
 
-  // ============ FIT 特定工具方法 ============
+  // ============ FIT Specific Utility Methods ============
 
   protected parseTimestamp(timestamp: string | undefined): Date | undefined {
     if (!timestamp) return undefined;
@@ -98,14 +98,14 @@ export abstract class BaseFITMessageConverter implements IFITMessageConverter {
     if (!startTime || !endTime) return 0;
     const start = new Date(startTime).getTime();
     const end = new Date(endTime).getTime();
-    return Math.max(0, (end - start) / 1000); // 返回秒数
+    return Math.max(0, (end - start) / 1000); // Return seconds
   }
 
   protected filterMessagesByTimeRange(
     messages: any[],
     startTime: string,
     endTime: string,
-    tolerance: number = 2000 // 默认2秒容错
+    tolerance: number = 2000 // Default 2 second tolerance
   ): any[] {
     const start = new Date(startTime).getTime();
     const end = new Date(endTime).getTime();
@@ -133,7 +133,7 @@ export abstract class BaseFITMessageConverter implements IFITMessageConverter {
 }
 
 /**
- * FIT 数据结构化插件基类
+ * FIT data structuring plugin base class
  */
 export abstract class BaseFITStructurePlugin implements IFITStructurePlugin {
   abstract name: string;
@@ -159,7 +159,7 @@ export abstract class BaseFITStructurePlugin implements IFITStructurePlugin {
 }
 
 /**
- * FIT 中间件基类
+ * FIT middleware base class
  */
 export abstract class BaseFITMiddleware implements IFITMiddlewarePlugin {
   abstract name: string;
@@ -199,6 +199,6 @@ export abstract class BaseFITMiddleware implements IFITMiddlewarePlugin {
   }
 
   async onError(error: Error, context: FITContext): Promise<void> {
-    console.error(`FIT中间件 ${this.name} 处理错误:`, error);
+    console.error(`FIT middleware ${this.name} processing error:`, error);
   }
 }

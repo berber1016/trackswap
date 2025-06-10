@@ -1,6 +1,6 @@
-# TrackSwap - 多格式轨迹处理库
+# TrackSwap - Multi-Format Track Processing Library
 
-一个强大的多格式轨迹文件处理库，支持 GPX、FIT、TCX 文件的解析、编码和格式转换。
+A powerful multi-format track file processing library that supports parsing, encoding, and format conversion for GPX, FIT, and TCX files.
 
 ---
 
@@ -8,24 +8,24 @@
 
 ---
 
-## 🚀 特性
+## 🚀 Features
 
-- 🔄 **多格式支持**: GPX 1.1、FIT、TCX 格式
-- 🎯 **统一转换**: 任意格式之间相互转换
-- 🤖 **自动检测**: 智能识别文件格式
-- 🔧 **插件架构**: 基于插件的可扩展设计
-- 🛡️ **类型安全**: 完整的 TypeScript 支持
-- ⚡ **高性能**: 优化的解析和编码算法
+- 🔄 **Multi-Format Support**: GPX 1.1, FIT, TCX formats
+- 🎯 **Unified Conversion**: Convert between any formats  
+- 🤖 **Auto-Detection**: Intelligently identify file formats
+- 🔧 **Plugin Architecture**: Extensible plugin-based design
+- 🛡️ **Type Safety**: Complete TypeScript support
+- ⚡ **High Performance**: Optimized parsing and encoding algorithms
 
-## 📦 安装
+## 📦 Installation
 
 ```bash
 npm install trackswap
 ```
 
-## 🎯 快速开始
+## 🎯 Quick Start
 
-### 基本使用
+### Basic Usage
 
 ```typescript
 import { TrackSwap } from 'trackswap';
@@ -33,171 +33,171 @@ import fs from 'fs';
 
 const trackSwap = new TrackSwap();
 
-// 解析 GPX 文件
+// Parse GPX file
 const gpxBuffer = fs.readFileSync('track.gpx');
 const gpxData = await trackSwap.parseGPX(gpxBuffer);
 
-// 解析 FIT 文件
+// Parse FIT file
 const fitBuffer = fs.readFileSync('activity.fit');
 const fitData = await trackSwap.parseFIT(fitBuffer);
 
-// 解析 TCX 文件
+// Parse TCX file
 const tcxBuffer = fs.readFileSync('workout.tcx');
 const tcxData = await trackSwap.parseTCX(tcxBuffer);
 ```
 
-### 格式转换
+### Format Conversion
 
 ```typescript
-// 🔄 自动检测格式并转换
+// 🔄 Auto-detect format and convert
 const gpxBuffer = await trackSwap.convertFile(anyBuffer, 'gpx');
 const fitBuffer = await trackSwap.convertFile(anyBuffer, 'fit');
 const tcxBuffer = await trackSwap.convertFile(anyBuffer, 'tcx');
 
-// 🎯 指定源格式转换（提升性能）
+// 🎯 Specify source format for better performance
 const convertedBuffer = await trackSwap.convertFile(
   sourceBuffer, 
-  'fit',      // 目标格式
-  'gpx'       // 源格式（可选）
+  'fit',      // target format
+  'gpx'       // source format (optional)
 );
 ```
 
-### 自动解析
+### Auto Parsing
 
 ```typescript
-// 🤖 自动检测格式并解析
+// 🤖 Auto-detect format and parse
 const parsedData = await trackSwap.parseFile(buffer);
 
-// 🏃‍♂️ 解析并转换为统一的运动数据格式
+// 🏃‍♂️ Parse and convert to unified sport data format
 const sportData = await trackSwap.parseToSport(buffer);
 ```
 
-## 📖 详细使用指南
+## 📖 Detailed Usage Guide
 
-### 1. 文件解析
+### 1. File Parsing
 
-#### GPX 文件处理
+#### GPX File Processing
 
 ```typescript
-// 从 Buffer 解析
+// Parse from Buffer
 const gpxData = await trackSwap.parseGPX(buffer);
 
-// 从字符串解析
+// Parse from string
 const gpxData = await trackSwap.parseGPXString(xmlString);
 
-// 编码为 Buffer
+// Encode to Buffer
 const buffer = await trackSwap.encodeGPX(gpxData);
 
-// 编码为字符串
+// Encode to string
 const xmlString = trackSwap.encodeGPXString(gpxData);
 ```
 
-#### FIT 文件处理
+#### FIT File Processing
 
 ```typescript
-// 解析 FIT 文件
+// Parse FIT file
 const fitData = await trackSwap.parseFIT(buffer);
 
-// 编码为 Activity 文件
+// Encode to Activity file
 const activityBuffer = await trackSwap.encodeFIT(fitData);
 
-// 编码为 Course 文件
+// Encode to Course file
 const courseBuffer = await trackSwap.encodeFITCourse(fitData);
 ```
 
-#### TCX 文件处理
+#### TCX File Processing
 
 ```typescript
-// 从 Buffer 解析
+// Parse from Buffer
 const tcxData = await trackSwap.parseTCX(buffer);
 
-// 从字符串解析
+// Parse from string
 const tcxData = await trackSwap.parseTCXString(xmlString);
 
-// 编码为 Buffer
+// Encode to Buffer
 const buffer = await trackSwap.encodeTCX(tcxData);
 
-// 编码为字符串
+// Encode to string
 const xmlString = await trackSwap.encodeTCXString(tcxData);
 ```
 
-### 2. 格式转换
+### 2. Format Conversion
 
-#### 统一转换方法
+#### Unified Conversion Method
 
 ```typescript
-// 🔄 自动检测并转换
+// 🔄 Auto-detect and convert
 const result = await trackSwap.convertFile(sourceBuffer, 'gpx');
 
-// 🎯 指定格式转换
+// 🎯 Specify format conversion
 const result = await trackSwap.convertFile(sourceBuffer, 'fit', 'gpx');
 
-// 📊 支持的转换组合
-// GPX ↔ FIT ↔ TCX (任意格式之间相互转换)
+// 📊 Supported conversion combinations
+// GPX ↔ FIT ↔ TCX (convert between any formats)
 ```
 
-#### SportFileType 统一格式
+#### SportFileType Unified Format
 
 ```typescript
-// 转换为统一的运动数据格式
+// Convert to unified sport data format
 const gpxSport = await trackSwap.convertGPXToSport(gpxData);
 const fitSport = await trackSwap.convertFITToSport(fitData);
 const tcxSport = await trackSwap.convertTCXToSport(tcxData);
 
-// 从统一格式转换回具体格式
+// Convert from unified format back to specific formats
 const gpxData = await trackSwap.convertSportToGPX(sportData);
 const fitData = await trackSwap.convertSportToFIT(sportData);
 const tcxData = await trackSwap.convertSportToTCX(sportData);
 ```
 
-### 3. 智能解析
+### 3. Smart Parsing
 
 ```typescript
-// 🤖 自动检测格式
+// 🤖 Auto-detect format
 const format = trackSwap.detectFormat(buffer);
-console.log(`检测到格式: ${format}`); // 'gpx' | 'fit' | 'tcx' | 'unknown'
+console.log(`Detected format: ${format}`); // 'gpx' | 'fit' | 'tcx' | 'unknown'
 
-// 📂 统一解析方法
+// 📂 Unified parsing method
 const parsedData = await trackSwap.parseFile(buffer);
-const parsedData = await trackSwap.parseFile(buffer, 'gpx'); // 指定格式
+const parsedData = await trackSwap.parseFile(buffer, 'gpx'); // specify format
 
-// 🏃‍♂️ 解析为统一格式
+// 🏃‍♂️ Parse to unified format
 const sportData = await trackSwap.parseToSport(buffer);
-const sportData = await trackSwap.parseToSport(buffer, 'fit'); // 指定格式
+const sportData = await trackSwap.parseToSport(buffer, 'fit'); // specify format
 ```
 
-## 🔧 API 参考
+## 🔧 API Reference
 
-### TrackSwap 类
+### TrackSwap Class
 
-#### 解析方法
+#### Parsing Methods
 
-| 方法 | 说明 | 参数 | 返回值 |
-|------|------|------|--------|
-| `parseGPX(buffer)` | 解析 GPX Buffer | `Buffer` | `Promise<GPX11Type \| undefined>` |
-| `parseGPXString(xml)` | 解析 GPX 字符串 | `string` | `Promise<GPX11Type \| undefined>` |
-| `parseFIT(buffer)` | 解析 FIT Buffer | `Buffer` | `Promise<FITFileType>` |
-| `parseTCX(buffer)` | 解析 TCX Buffer | `Buffer` | `Promise<TCXFileType>` |
-| `parseTCXString(xml)` | 解析 TCX 字符串 | `string` | `Promise<TCXFileType>` |
-| `parseFile(buffer, type?)` | 统一解析方法 | `Buffer, string?` | `Promise<GPX11Type \| FITFileType \| TCXFileType>` |
-| `parseToSport(buffer, type?)` | 解析为统一格式 | `Buffer, string?` | `Promise<SportFileType>` |
+| Method | Description | Parameters | Return Value |
+|--------|-------------|------------|--------------|
+| `parseGPX(buffer)` | Parse GPX Buffer | `Buffer` | `Promise<GPX11Type \| undefined>` |
+| `parseGPXString(xml)` | Parse GPX string | `string` | `Promise<GPX11Type \| undefined>` |
+| `parseFIT(buffer)` | Parse FIT Buffer | `Buffer` | `Promise<FITFileType>` |
+| `parseTCX(buffer)` | Parse TCX Buffer | `Buffer` | `Promise<TCXFileType>` |
+| `parseTCXString(xml)` | Parse TCX string | `string` | `Promise<TCXFileType>` |
+| `parseFile(buffer, type?)` | Unified parsing method | `Buffer, string?` | `Promise<GPX11Type \| FITFileType \| TCXFileType>` |
+| `parseToSport(buffer, type?)` | Parse to unified format | `Buffer, string?` | `Promise<SportFileType>` |
 
-#### 编码方法
+#### Encoding Methods
 
-| 方法 | 说明 | 参数 | 返回值 |
-|------|------|------|--------|
-| `encodeGPX(data)` | 编码 GPX 为 Buffer | `GPX11Type` | `Promise<Buffer>` |
-| `encodeGPXString(data)` | 编码 GPX 为字符串 | `GPX11Type` | `string` |
-| `encodeFIT(data)` | 编码 FIT 为 Buffer | `FITFileType` | `Promise<Buffer>` |
-| `encodeFITCourse(data)` | 编码 FIT Course | `FITFileType` | `Promise<Buffer>` |
-| `encodeTCX(data)` | 编码 TCX 为 Buffer | `TCXFileType` | `Promise<Buffer>` |
-| `encodeTCXString(data)` | 编码 TCX 为字符串 | `TCXFileType` | `Promise<string>` |
+| Method | Description | Parameters | Return Value |
+|--------|-------------|------------|--------------|
+| `encodeGPX(data)` | Encode GPX to Buffer | `GPX11Type` | `Promise<Buffer>` |
+| `encodeGPXString(data)` | Encode GPX to string | `GPX11Type` | `string` |
+| `encodeFIT(data)` | Encode FIT to Buffer | `FITFileType` | `Promise<Buffer>` |
+| `encodeFITCourse(data)` | Encode FIT Course | `FITFileType` | `Promise<Buffer>` |
+| `encodeTCX(data)` | Encode TCX to Buffer | `TCXFileType` | `Promise<Buffer>` |
+| `encodeTCXString(data)` | Encode TCX to string | `TCXFileType` | `Promise<string>` |
 
-#### 转换方法
+#### Conversion Methods
 
-| 方法 | 说明 | 参数 | 返回值 |
-|------|------|------|--------|
-| `convertFile(buffer, target, source?)` | 统一转换方法 | `Buffer, string, string?` | `Promise<Buffer>` |
+| Method | Description | Parameters | Return Value |
+|--------|-------------|------------|--------------|
+| `convertFile(buffer, target, source?)` | Unified conversion method | `Buffer, string, string?` | `Promise<Buffer>` |
 | `convertGPXToSport(data)` | GPX → Sport | `GPX11Type` | `Promise<SportFileType>` |
 | `convertFITToSport(data)` | FIT → Sport | `FITFileType` | `Promise<SportFileType>` |
 | `convertTCXToSport(data)` | TCX → Sport | `TCXFileType` | `Promise<SportFileType>` |
@@ -205,17 +205,17 @@ const sportData = await trackSwap.parseToSport(buffer, 'fit'); // 指定格式
 | `convertSportToFIT(data)` | Sport → FIT | `SportFileType` | `Promise<FITFileType>` |
 | `convertSportToTCX(data)` | Sport → TCX | `SportFileType` | `Promise<TCXFileType>` |
 
-#### 工具方法
+#### Utility Methods
 
-| 方法 | 说明 | 参数 | 返回值 |
-|------|------|------|--------|
-| `detectFormat(buffer)` | 检测文件格式 | `Buffer` | `'gpx' \| 'fit' \| 'tcx' \| 'unknown'` |
-| `getSportProcessor()` | 获取运动处理器 | - | `SportProcessor` |
-| `destroy()` | 清理资源 | - | `Promise<void>` |
+| Method | Description | Parameters | Return Value |
+|--------|-------------|------------|--------------|
+| `detectFormat(buffer)` | Detect file format | `Buffer` | `'gpx' \| 'fit' \| 'tcx' \| 'unknown'` |
+| `getSportProcessor()` | Get sport processor | - | `SportProcessor` |
+| `destroy()` | Clean up resources | - | `Promise<void>` |
 
-## 🌟 实际应用示例
+## 🌟 Real-World Examples
 
-### 批量格式转换
+### Batch Format Conversion
 
 ```typescript
 import { TrackSwap } from 'trackswap';
@@ -231,40 +231,40 @@ async function batchConvert(inputDir: string, outputFormat: 'gpx' | 'fit' | 'tcx
       const inputPath = path.join(inputDir, file);
       const buffer = fs.readFileSync(inputPath);
       
-      // 🔄 自动检测并转换
+      // 🔄 Auto-detect and convert
       const converted = await trackSwap.convertFile(buffer, outputFormat);
       
       const outputPath = path.join(inputDir, 
         `${path.parse(file).name}.${outputFormat}`);
       fs.writeFileSync(outputPath, converted);
       
-      console.log(`✅ 转换完成: ${file} → ${outputFormat}`);
+      console.log(`✅ Conversion complete: ${file} → ${outputFormat}`);
     } catch (error) {
-      console.error(`❌ 转换失败: ${file}`, error);
+      console.error(`❌ Conversion failed: ${file}`, error);
     }
   }
   
   await trackSwap.destroy();
 }
 
-// 使用示例
+// Usage example
 await batchConvert('./tracks', 'gpx');
 ```
 
-### 轨迹数据分析
+### Track Data Analysis
 
 ```typescript
 async function analyzeTrack(buffer: Buffer) {
   const trackSwap = new TrackSwap();
   
-  // 🔍 检测格式
+  // 🔍 Detect format
   const format = trackSwap.detectFormat(buffer);
-  console.log(`文件格式: ${format}`);
+  console.log(`File format: ${format}`);
   
-  // 📊 转换为统一格式进行分析
+  // 📊 Convert to unified format for analysis
   const sportData = await trackSwap.parseToSport(buffer);
   
-  // 分析数据
+  // Analyze data
   const analysis = {
     totalDistance: sportData.summary?.totalDistance || 0,
     totalTime: sportData.summary?.totalTime || 0,
@@ -273,35 +273,35 @@ async function analyzeTrack(buffer: Buffer) {
     trackPoints: sportData.tracks?.[0]?.segments?.[0]?.points?.length || 0
   };
   
-  console.log('轨迹分析结果:', analysis);
+  console.log('Track analysis results:', analysis);
   
   await trackSwap.destroy();
   return analysis;
 }
 ```
 
-### 多格式数据融合
+### Multi-Format Data Fusion
 
 ```typescript
 async function mergeMultiFormatTracks(files: { buffer: Buffer, name: string }[]) {
   const trackSwap = new TrackSwap();
   const allSportData: SportFileType[] = [];
   
-  // 🔄 将所有格式转换为统一格式
+  // 🔄 Convert all formats to unified format
   for (const file of files) {
     try {
       const sportData = await trackSwap.parseToSport(file.buffer);
       sportData.metadata = { ...sportData.metadata, originalFile: file.name };
       allSportData.push(sportData);
     } catch (error) {
-      console.error(`解析失败: ${file.name}`, error);
+      console.error(`Parsing failed: ${file.name}`, error);
     }
   }
   
-  // 融合数据逻辑
+  // Data fusion logic
   const mergedData = mergeSportData(allSportData);
   
-  // 输出为不同格式
+  // Output to different formats
   const results = {
     gpx: await trackSwap.convertSportToGPX(mergedData),
     fit: await trackSwap.convertSportToFIT(mergedData),
@@ -313,24 +313,24 @@ async function mergeMultiFormatTracks(files: { buffer: Buffer, name: string }[])
 }
 ```
 
-## 🏗️ 架构设计
+## 🏗️ Architecture Design
 
-TrackSwap 采用模块化架构，核心组件包括：
+TrackSwap adopts a modular architecture with core components including:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    TrackSwap 架构图                          │
+│                    TrackSwap Architecture                    │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  🔧 核心处理模块                                             │
+│  🔧 Core Processing Modules                                 │
 │  ┌─────────────────────────────────────────────────────────┐ │
-│  │ • GPXDecoder/Encoder - GPX 文件处理                     │ │
-│  │ • FITDecoder/Encoder - FIT 文件处理                     │ │
-│  │ • TCXDecoder/Encoder - TCX 文件处理                     │ │
-│  │ • SportProcessor - 统一格式转换处理                      │ │
+│  │ • GPXDecoder/Encoder - GPX file processing              │ │
+│  │ • FITDecoder/Encoder - FIT file processing              │ │
+│  │ • TCXDecoder/Encoder - TCX file processing              │ │
+│  │ • SportProcessor - Unified format conversion            │ │
 │  └─────────────────────────────────────────────────────────┘ │
 │                                                             │
-│  🔄 转换引擎                                                │
+│  🔄 Conversion Engine                                       │
 │  ┌─────────────────────────────────────────────────────────┐ │
 │  │ • GPXToSportConverter - GPX → SportFileType            │ │
 │  │ • FITToSportConverter - FIT → SportFileType            │ │
@@ -340,91 +340,91 @@ TrackSwap 采用模块化架构，核心组件包括：
 │  │ • SportToTCXEncoder - SportFileType → TCX              │ │
 │  └─────────────────────────────────────────────────────────┘ │
 │                                                             │
-│  🎯 统一接口                                                │
+│  🎯 Unified Interface                                       │
 │  ┌─────────────────────────────────────────────────────────┐ │
-│  │ • 自动格式检测                                           │ │
-│  │ • 统一解析方法                                           │ │
-│  │ • 统一转换方法                                           │ │
-│  │ • 生命周期管理                                           │ │
+│  │ • Auto format detection                                 │ │
+│  │ • Unified parsing methods                               │ │
+│  │ • Unified conversion methods                            │ │
+│  │ • Lifecycle management                                  │ │
 │  └─────────────────────────────────────────────────────────┘ │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 🔍 支持的格式
+## 🔍 Supported Formats
 
 ### GPX (GPS Exchange Format)
-- ✅ GPX 1.1 标准
-- ✅ 航路点 (Waypoints)
-- ✅ 路线 (Routes) 
-- ✅ 轨迹 (Tracks)
-- ✅ 元数据 (Metadata)
-- ✅ 扩展属性
+- ✅ GPX 1.1 standard
+- ✅ Waypoints
+- ✅ Routes
+- ✅ Tracks
+- ✅ Metadata
+- ✅ Extensions
 
 ### FIT (Flexible and Interoperable Data Transfer)
-- ✅ Activity 文件
-- ✅ Course 文件
-- ✅ 轨迹点数据
-- ✅ 心率、速度、海拔等传感器数据
-- ✅ Garmin 设备兼容
+- ✅ Activity files
+- ✅ Course files
+- ✅ Track point data
+- ✅ Heart rate, speed, altitude and other sensor data
+- ✅ Garmin device compatibility
 
 ### TCX (Training Center XML)
-- ✅ 训练数据
-- ✅ 运动轨迹
-- ✅ 心率区间
-- ✅ 圈速数据
-- ✅ Garmin Connect 兼容
+- ✅ Training data
+- ✅ Exercise tracks
+- ✅ Heart rate zones
+- ✅ Lap data
+- ✅ Garmin Connect compatibility
 
-## 🛠️ 开发指南
+## 🛠️ Development Guide
 
-### 环境要求
+### Requirements
 
 - Node.js >= 16
 - TypeScript >= 4.5
 
-### 项目结构
+### Project Structure
 
 ```
 src/
-├── TrackSwap.ts          # 主入口类
-├── GPX/                  # GPX 模块
+├── TrackSwap.ts          # Main entry class
+├── GPX/                  # GPX module
 │   ├── decoder.ts
 │   ├── encoder.ts
 │   └── types.ts
-├── FIT/                  # FIT 模块
+├── FIT/                  # FIT module
 │   ├── decoder.ts
 │   ├── encoder.ts
 │   └── types.ts
-├── TCX/                  # TCX 模块
+├── TCX/                  # TCX module
 │   ├── decoder.ts
 │   ├── encoder.ts
 │   └── types.ts
-├── sport/                # 统一转换模块
+├── sport/                # Unified conversion module
 │   ├── processor.ts
 │   ├── converters.ts
 │   ├── encoders.ts
 │   └── base.ts
-└── types.ts              # 公共类型定义
+└── types.ts              # Common type definitions
 ```
 
-### 贡献指南
+### Contributing Guidelines
 
-1. Fork 项目
-2. 创建特性分支
-3. 提交更改
-4. 发起 Pull Request
+1. Fork the project
+2. Create a feature branch
+3. Commit your changes
+4. Create a Pull Request
 
-## 📄 许可证
+## 📄 License
 
 MIT License
 
-## 🙏 致谢
+## 🙏 Acknowledgments
 
-感谢所有贡献者和开源社区的支持！
+Thanks to all contributors and the open source community for their support!
 
 ---
 
 <div align="center">
-  <strong>TrackSwap - 让轨迹数据处理变得简单</strong><br>
-  🚀 高效 • 🔄 统一 • 🛡️ 安全 • 📈 可扩展
+  <strong>TrackSwap - Making Track Data Processing Simple</strong><br>
+  🚀 Efficient • 🔄 Unified • 🛡️ Secure • 📈 Scalable
 </div> 

@@ -1,8 +1,8 @@
-// ============ 核心类和接口 ============
+// ============ Core Classes and Interfaces ============
 export { FITDecoder } from "./decoder.js";
 export { FITEncoder } from "./encoder.js";
 
-// ============ 基础架构 ============
+// ============ Base Architecture ============
 export {
   IFITMessageConverter,
   IFITStructurePlugin,
@@ -12,17 +12,17 @@ export {
   BaseFITMiddleware,
 } from "./base.js";
 
-// ============ 默认插件 ============
+// ============ Default Plugins ============
 export {
   SessionStructurePlugin,
   CourseStructurePlugin,
   FileHeaderPlugin,
 } from "./plugins.js";
 
-// ============ 类型定义 ============
+// ============ Type Definitions ============
 export * from "./types.js";
 
-// ============ 默认导出 ============
+// ============ Default Export ============
 import { FITDecoder } from "./decoder.js";
 import { FITEncoder } from "./encoder.js";
 

@@ -1,4 +1,4 @@
-// ============ 基础架构 ============
+// ============ Base Infrastructure ============
 export {
   IPlugin,
   IConverterPlugin,
@@ -8,5 +8,5 @@ export {
   BaseMiddleware,
 } from "./base.js";
 
-// ============ XML 工具 ============
+// ============ XML Tools ============
 export { XMLUtils } from "./xml-utils.js";

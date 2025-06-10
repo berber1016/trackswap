@@ -10,7 +10,7 @@ import {
 } from "./types.js";
 
 /**
- * 流水线阶段
+ * Pipeline stages
  */
 export enum PipelineStage {
   TOKENIZE = "tokenize",
@@ -19,10 +19,10 @@ export enum PipelineStage {
   COMPLETE = "complete",
 }
 
-// ============ 流水线处理器实现 ============
+// ============ Pipeline Processor Implementation ============
 
 /**
- * 流水线处理器
+ * Pipeline processor
  */
 export interface IPipelineProcessor {
   stage: PipelineStage;
@@ -30,7 +30,7 @@ export interface IPipelineProcessor {
 }
 
 /**
- * Tokenize处理器, 将xml转为 token
+ * Tokenize processor, converts xml to tokens
  */
 export class TokenizeProcessor implements IPipelineProcessor {
   stage = PipelineStage.TOKENIZE;
@@ -39,7 +39,7 @@ export class TokenizeProcessor implements IPipelineProcessor {
     const startTime = Date.now();
 
     if (!context.xmlContent) {
-      throw new Error("XML内容不能为空");
+      throw new Error("XML content cannot be empty");
     }
 
     const tokens: Token[] = [];
@@ -76,7 +76,7 @@ export class TokenizeProcessor implements IPipelineProcessor {
 }
 
 /**
- * AST生成处理器
+ * AST generation processor
  */
 export class AstGenerateProcessor implements IPipelineProcessor {
   stage = PipelineStage.AST_GENERATE;
@@ -85,7 +85,7 @@ export class AstGenerateProcessor implements IPipelineProcessor {
     const startTime = Date.now();
 
     if (!context.tokens) {
-      throw new Error("Tokens不能为空");
+      throw new Error("Tokens cannot be empty");
     }
 
     const stack: TokenAST[] = [];
@@ -124,7 +124,7 @@ export class AstGenerateProcessor implements IPipelineProcessor {
 }
 
 /**
- * 转换处理器
+ * Conversion processor
  */
 export class ConvertProcessor implements IPipelineProcessor {
   stage = PipelineStage.CONVERT;
@@ -135,12 +135,12 @@ export class ConvertProcessor implements IPipelineProcessor {
     const startTime = Date.now();
 
     if (!context.ast) {
-      throw new Error("AST不能为空");
+      throw new Error("AST cannot be empty");
     }
 
     const gpx: GPX11Type = {};
 
-    // 处理根节点属性
+    // Handle root node attributes
     if (context.ast.attributes) {
       Object.entries(context.ast.attributes).forEach(([key, value]) => {
         if (key.startsWith("xmlns:")) {
@@ -153,11 +153,11 @@ export class ConvertProcessor implements IPipelineProcessor {
       });
     }
 
-    // 处理子节点
+    // Process child nodes
     context.ast.children?.forEach((child) => {
       const converter = this.getConverter(child.tag);
       if (!converter) {
-        console.error(`标签 ${child.tag} 未找到对应的 converter`);
+        console.error(`Tag ${child.tag} has no corresponding converter`);
       }
       try {
         const result = converter.convert(child, context);
@@ -167,7 +167,7 @@ export class ConvertProcessor implements IPipelineProcessor {
       } catch (error) {
         context.errors.push(error as Error);
         console.error(
-          `转换器 ${converter.name} 处理标签 ${child.tag} 时出错:`,
+          `Converter ${converter.name} failed processing tag ${child.tag}:`,
           error
         );
       }
@@ -204,7 +204,7 @@ export class ConvertProcessor implements IPipelineProcessor {
 }
 
 /**
- * 完成处理器
+ * Complete processor
  */
 export class CompleteProcessor implements IPipelineProcessor {
   stage = PipelineStage.COMPLETE;
@@ -212,7 +212,7 @@ export class CompleteProcessor implements IPipelineProcessor {
   async process(context: DecoderContext): Promise<DecoderContext> {
     context.performance.endTime = Date.now();
 
-    // 记录性能指标
+    // Record performance metrics
     const totalTime =
       context.performance.endTime - context.performance.startTime;
     context.metadata.set("performance", {

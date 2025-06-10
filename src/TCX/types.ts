@@ -2,7 +2,7 @@ import { ExtensionsType, Token, TokenAST } from "../types.js";
 import { IProcessingContext } from "../core/base.js";
 
 /**
- * TCX 文件类型
+ * TCX file type
  */
 export interface TCXFileType {
   version?: string;
@@ -23,14 +23,14 @@ export interface TCXFileType {
 
 export interface FolderType {
   History?: HistoryType;
-  // TODO: 暂不处理
+  // TODO: not implemented yet
   Workouts?: WorkoutListType;
-  // TODO: 暂不处理
+  // TODO: not implemented yet
   Courses?: any;
 }
 
 export interface WorkoutListType {
-  // TODO: 暂不处理
+  // TODO: not implemented yet
   Workout?: WorkoutType[];
 }
 
@@ -52,7 +52,7 @@ export interface AbstractStepType {
 }
 
 export interface CourseListType {
-  // TODO: 暂不处理
+  // TODO: not implemented yet
   Course?: CourseType[];
 }
 
@@ -166,11 +166,11 @@ export interface ActivityLapType {
 }
 
 export type TriggerMethodType =
-  // Manual（手动触发） Time（时间触发）Distance（距离触发） Location（位置触发）
+  // Manual (manual trigger) Time (time trigger) Distance (distance trigger) Location (location trigger)
   "Manual" | "Distance" | "Location" | "Time" | "HeartRate";
 /**
- * Active（高强度）
- * Resting（低强度）
+ * Active (high intensity)
+ * Resting (low intensity)
  */
 export type IntensityType = "Active" | "Resting";
 
@@ -204,6 +204,7 @@ export interface NextSportType {
 export interface TrackType {
   Trackpoint?: TrackpointType[];
 }
+
 export interface TrackpointType {
   Time?: string;
   Position?: PositionType;
@@ -220,25 +221,24 @@ export interface PositionType {
   LongitudeDegrees?: string;
 }
 
-// ============ 上下文和处理相关类型 ============
-
 /**
- * TCX 解码上下文
+ * TCX processing context
  */
 export interface TCXContext extends IProcessingContext {
-  // IProcessingContext 已经包含了 metadata、errors、warnings、stats 等基础字段
-  // 这里添加 TCX 特定的字段
+  // IProcessingContext already includes basic fields like metadata, errors, warnings, stats, etc.
+  // Here we add TCX-specific fields
   rawData?: Buffer;
   xmlContent?: string;
   tokens?: Token[];
   ast?: TokenAST;
   result?: TCXFileType;
-  // TCX 特定的性能统计
+  // TCX-specific performance statistics
   performance: {
     startTime: number;
     tokenizeTime?: number;
     astTime?: number;
     convertTime?: number;
     endTime?: number;
+    processingTime?: number;
   };
 }

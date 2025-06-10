@@ -1,240 +1,274 @@
-import { Parser } from "htmlparser2";
-import { ExtensionsType, Token, TokenAST } from "../types.js";
-import {
-  TCXFileType,
-  TCXContext,
-  ActivityListType,
-  AbstractSourceType,
-  FolderType,
-  WorkoutListType,
-  CourseListType,
-} from "./types.js";
+import { Token, TokenAST } from "../types.js";
+import { XMLUtils } from "../core/xml-utils.js";
+import { TCXContext, TCXFileType } from "./types.js";
+import { ITCXConverterPlugin } from "./base.js";
 
 /**
- * 流水线阶段
+ * TCX pipeline stages
  */
 export enum PipelineStage {
   TOKENIZE = "tokenize",
-  AST_GENERATE = "ast_generate",
+  AST_GENERATE = "ast-generate",
   CONVERT = "convert",
   COMPLETE = "complete",
 }
 
-// ============ 流水线处理器实现 ============
-
 /**
- * 流水线处理器接口
+ * Pipeline processor interface
  */
 export interface IPipelineProcessor {
   stage: PipelineStage;
+  name: string;
   process(context: TCXContext): Promise<TCXContext>;
 }
 
+// ============ Core Pipeline Processors ============
+
 /**
- * Tokenize处理器，将XML转为Token
+ * Tokenizer - convert XML to Token array
  */
 export class TokenizeProcessor implements IPipelineProcessor {
   stage = PipelineStage.TOKENIZE;
+  name = "tokenize-processor";
 
   async process(context: TCXContext): Promise<TCXContext> {
-    const startTime = Date.now();
-
     if (!context.xmlContent) {
-      throw new Error("XML内容不能为空");
+      throw new Error("TCX data cannot be empty");
     }
 
-    const tokens: Token[] = [];
-    const parser = new Parser(
-      {
-        onopentag(name, attribs) {
-          tokens.push({
-            type: "open",
-            tag: name,
-            attributes: attribs,
-          });
-        },
-        ontext(text) {
-          const filteredText = text.replace(/\n/g, "").trim();
-          if (filteredText) {
-            tokens.push({ type: "text", tag: "text", value: filteredText });
-          }
-        },
-        onclosetag(name) {
-          tokens.push({ type: "close", tag: name });
-        },
-      },
-      { xmlMode: true }
-    );
+    // Use XMLUtils to tokenize
+    const tokens = XMLUtils.tokenizeXML(context.xmlContent);
 
-    parser.write(context.xmlContent);
-    parser.end();
+    if (tokens.length === 0) {
+      throw new Error("Not a valid TCX file");
+    }
 
     context.tokens = tokens;
-    context.performance.tokenizeTime = Date.now() - startTime;
+    context.stats.processedTokens = tokens.length;
 
     return context;
   }
 }
 
 /**
- * AST生成处理器
+ * AST generator - convert Token array to AST tree
  */
 export class AstGenerateProcessor implements IPipelineProcessor {
   stage = PipelineStage.AST_GENERATE;
+  name = "ast-generate-processor";
 
   async process(context: TCXContext): Promise<TCXContext> {
-    const startTime = Date.now();
-
-    if (!context.tokens) {
-      throw new Error("Tokens不能为空");
+    if (!context.tokens || context.tokens.length === 0) {
+      throw new Error("Tokens are empty, cannot generate AST");
     }
 
-    const stack: TokenAST[] = [];
-    let root: TokenAST | undefined = undefined;
-    let current: TokenAST | null = null;
+    const ast = this.buildAST(context.tokens);
 
-    for (const token of context.tokens) {
+    if (!ast) {
+      throw new Error("Failed to generate AST");
+    }
+
+    context.ast = ast;
+
+    return context;
+  }
+
+  /**
+   * Build AST from tokens
+   */
+  private buildAST(tokens: Token[]): TokenAST | undefined {
+    if (tokens.length === 0) return undefined;
+
+    const stack: TokenAST[] = [];
+    let current: TokenAST | undefined;
+
+    for (const token of tokens) {
       if (token.type === "open") {
-        const newElement: TokenAST = {
+        const node: TokenAST = {
           tag: token.tag,
-          attributes: token.attributes || {},
+          attributes: token.attributes,
           children: [],
         };
 
-        if (!root) {
-          root = newElement;
-        } else if (current) {
-          current.children?.push(newElement);
+        if (current) {
+          current.children = current.children || [];
+          current.children.push(node);
         }
 
-        stack.push(newElement);
-        current = newElement;
-      } else if (token.type === "text" && current) {
-        current.value = token.value;
+        stack.push(node);
+        current = node;
+
+        // Set root node
+        if (!stack.length) {
+          if (!current) current = node;
+        }
       } else if (token.type === "close") {
         stack.pop();
-        current = stack[stack.length - 1] || null;
+        current = stack[stack.length - 1];
+      } else if (token.type === "text" && current) {
+        // Add text content to current element
+        if (
+          token.value &&
+          typeof token.value === "string" &&
+          token.value.trim()
+        ) {
+          current.value = token.value.trim();
+        }
       }
     }
 
-    context.ast = root;
-    context.performance.astTime = Date.now() - startTime;
-
-    return context;
+    return current;
   }
 }
 
 /**
- * 转换处理器
+ * Converter - convert AST to TCX data structure
  */
 export class ConvertProcessor implements IPipelineProcessor {
   stage = PipelineStage.CONVERT;
+  name = "convert-processor";
 
-  constructor(private getConverter: (tag: string) => any) {}
+  constructor(
+    private getConverter: (tag: string) => ITCXConverterPlugin | undefined
+  ) {}
 
   async process(context: TCXContext): Promise<TCXContext> {
-    const startTime = Date.now();
-
     if (!context.ast) {
-      throw new Error("AST不能为空");
+      throw new Error("AST is empty, cannot convert");
     }
 
-    const tcx: TCXFileType = {};
+    // Find TrainingCenterDatabase root node
+    const tcxNode = this.findTCXRoot(context.ast);
+    if (!tcxNode) {
+      throw new Error(
+        "Not a valid TCX file: TrainingCenterDatabase element not found"
+      );
+    }
 
-    // 处理根节点属性
-    if (context.ast.attributes) {
-      Object.entries(context.ast.attributes).forEach(([key, value]) => {
-        if (key.startsWith("xmlns:")) {
-          tcx[key] = value.replace(/&#39;/g, "'");
-        } else if (key === "xsi:schemaLocation") {
-          tcx[key] = value.replace(/&#39;/g, "'");
+    const result = this.convertAST(tcxNode, context);
+    context.result = result as TCXFileType;
+
+    // Update statistics
+    context.stats.convertedElements = this.countElements(context.ast);
+
+    return context;
+  }
+
+  /**
+   * Find TCX root node
+   */
+  private findTCXRoot(ast: TokenAST): TokenAST | undefined {
+    if (ast.tag === "TrainingCenterDatabase") {
+      return ast;
+    }
+
+    if (ast.children) {
+      for (const child of ast.children) {
+        const result = this.findTCXRoot(child);
+        if (result) return result;
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Convert AST node
+   */
+  private convertAST(ast: TokenAST, context: TCXContext): any {
+    const converter = this.getConverter(ast.tag);
+
+    if (converter) {
+      return converter.convert(ast, context);
+    }
+
+    // If no converter available, perform generic conversion
+    return this.genericConvert(ast, context);
+  }
+
+  /**
+   * Generic conversion method
+   */
+  private genericConvert(ast: TokenAST, context: TCXContext): any {
+    const result: any = {};
+
+    // Copy attributes
+    if (ast.attributes) {
+      Object.entries(ast.attributes).forEach(([key, value]) => {
+        result[key] = value;
+      });
+    }
+
+    // Handle content
+    if (ast.value !== undefined) {
+      if (ast.children && ast.children.length > 0) {
+        // If both value and children exist, create a special structure
+        result._value = ast.value;
+      } else {
+        // Only value exists, return the value directly
+        return ast.value;
+      }
+    }
+
+    // Convert child elements
+    if (ast.children) {
+      ast.children.forEach((child) => {
+        const childResult = this.convertAST(child, context);
+
+        if (result[child.tag]) {
+          // If property already exists, convert to array
+          if (!Array.isArray(result[child.tag])) {
+            result[child.tag] = [result[child.tag]];
+          }
+          result[child.tag].push(childResult);
         } else {
-          tcx[key] = value;
+          result[child.tag] = childResult;
         }
       });
     }
 
-    // 处理子节点
-    context.ast.children?.forEach((child) => {
-      const converter = this.getConverter(child.tag);
-      if (!converter) {
-        console.error(`标签 ${child.tag} 未找到对应的 converter`);
-        return;
-      }
-      try {
-        const result = converter.convert(child, context);
-        if (result) {
-          this.assignResult(tcx, child.tag, result);
-        }
-      } catch (error) {
-        context.errors.push(error as Error);
-        console.error(
-          `转换器 ${converter.name} 处理标签 ${child.tag} 时出错:`,
-          error
-        );
-      }
-    });
-
-    context.result = tcx;
-    context.performance.convertTime = Date.now() - startTime;
-
-    return context;
+    return result;
   }
 
-  private assignResult(tcx: TCXFileType, tag: string, result: any): void {
-    switch (tag) {
-      case "Folders":
-        tcx.Folders = result as FolderType;
-        break;
-      case "Activities":
-        tcx.Activities = result as ActivityListType;
-        break;
-      case "Workouts":
-        tcx.Workouts = result as WorkoutListType;
-        break;
-      case "Courses":
-        tcx.Courses = result as CourseListType;
-        break;
-      case "Author":
-        tcx.Author = result as AbstractSourceType;
-        break;
-      case "Extensions":
-        tcx.Extensions = result as ExtensionsType;
-        break;
-      default:
-        // 对于其他标签，直接赋值
-        tcx[tag] = result;
-        break;
+  /**
+   * Count AST elements
+   */
+  private countElements(ast: TokenAST): number {
+    let count = 1;
+    if (ast.children) {
+      for (const child of ast.children) {
+        count += this.countElements(child);
+      }
     }
+    return count;
   }
 }
 
 /**
- * 完成处理器
+ * Completion processor - final processing and cleanup
  */
 export class CompleteProcessor implements IPipelineProcessor {
   stage = PipelineStage.COMPLETE;
+  name = "complete-processor";
 
   async process(context: TCXContext): Promise<TCXContext> {
-    context.performance.endTime = Date.now();
-
-    // 记录性能指标
-    const totalTime =
-      context.performance.endTime - context.performance.startTime;
-    context.metadata.set("performance", {
-      totalTime,
-      tokenizeTime: context.performance.tokenizeTime,
-      astTime: context.performance.astTime,
-      convertTime: context.performance.convertTime,
-    });
-
-    // 更新统计信息
-    if (context.stats) {
-      context.stats.endTime = Date.now();
-      if (context.tokens) {
-        context.stats.processedTokens = context.tokens.length;
-      }
+    if (!context.result) {
+      throw new Error("No conversion result found");
     }
+
+    // Calculate processing time
+    const endTime = Date.now();
+    const processingTime = endTime - context.performance.startTime;
+
+    context.performance.endTime = endTime;
+    context.performance.processingTime = processingTime;
+
+    // Set performance data to context
+    context.metadata.set("performance", {
+      processingTime,
+      processedTokens: context.stats.processedTokens,
+      convertedElements: context.stats.convertedElements,
+    });
 
     return context;
   }

@@ -180,8 +180,20 @@ export class FITToSportConverter extends BaseSportConverter {
   }
 
   protected convertPoint(point: RecordMesgType): SportPointType | undefined {
-    console.log("point", point);
-    const { positionLong, positionLat, altitude, timestamp, ...rest } = point;
+    const {
+      positionLong,
+      positionLat,
+      altitude,
+      timestamp,
+      heartRate,
+      cadence,
+      distance,
+      power,
+      enhancedAltitude,
+      enhancedSpeed,
+      temperature,
+      ...rest
+    } = point;
 
     if (
       positionLong == null ||
@@ -196,6 +208,10 @@ export class FITToSportConverter extends BaseSportConverter {
       lat: round(semicirclesToDegrees(Number(positionLat)), 6),
       lon: round(semicirclesToDegrees(Number(positionLong)), 6),
       ele: altitude,
+      heart: heartRate,
+      power: power,
+      cadence: cadence,
+      temperature: temperature,
       time: timestamp ? dayjs(timestamp).valueOf() : undefined,
       ...rest,
     };
@@ -211,10 +227,6 @@ export class FITToSportConverter extends BaseSportConverter {
           ?.map((record) => this.convertPoint(record))
           .filter((point): point is SportPointType => point !== undefined) ||
         [];
-      console.log(
-        "lap======",
-        lap?.recordMesgs?.map((record) => this.convertPoint(record))
-      );
       routeSeg.push({
         points: points,
         duration: lap.totalElapsedTime,

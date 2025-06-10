@@ -1,17 +1,20 @@
 {
   "name": "trackswap",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "A powerful and flexible GPX parser and encoder library for Node.js and TypeScript. TrackSwap provides comprehensive support for GPX 1.1 format with advanced features like plugin system, middleware support, and optimized performance.",
-  "main": "dist/index.js",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
       "types": "./dist/index.d.ts"
     }
   },
   "files": [
     "dist/index.js",
+    "dist/index.cjs",
     "dist/index.d.ts",
     "dist/TrackSwap.d.ts",
     "dist/types.d.ts",
@@ -22,9 +25,10 @@
   "scripts": {
     "dev": "ts-node src/index.ts",
     "clean": "rm -rf dist",
-    "build": "npm run clean && npm run build:types && npm run build:prod && npm run build:optimize",
+    "build": "npm run clean && npm run build:types && npm run build:esm && npm run build:cjs && npm run build:optimize",
     "build:types": "tsc --emitDeclarationOnly",
-    "build:prod": "NODE_ENV=production node build.config.js",
+    "build:esm": "NODE_ENV=production node build.config.js",
+    "build:cjs": "NODE_ENV=production FORMAT=cjs node build.config.js",
     "build:dev": "npm run clean && npm run build:types && NODE_ENV=development node build.config.js",
     "build:optimize": "node scripts/optimize-dist.js",
     "build:js": "esbuild src/index.ts --bundle --platform=node --target=node14 --format=esm --outfile=dist/index.js --minify --sourcemap",
@@ -53,7 +57,6 @@
   ],
   "author": "berber1016",
   "license": "MIT",
-  "type": "module",
   "repository": {
     "type": "git",
     "url": "https://github.com/berber1016/trackswap.git"

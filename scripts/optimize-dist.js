@@ -2,7 +2,13 @@ import { promises as fs } from "fs";
 import path from "path";
 
 const DIST_DIR = "dist";
-const KEEP_FILES = ["index.js", "index.d.ts", "TrackSwap.d.ts", "types.d.ts"];
+const KEEP_FILES = [
+  "index.js",
+  "index.cjs",
+  "index.d.ts",
+  "TrackSwap.d.ts",
+  "types.d.ts",
+];
 
 const KEEP_DIRECTORIES = ["GPX", "FIT", "TCX", "sport", "core"];
 

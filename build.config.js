@@ -5,21 +5,33 @@ const pkg = JSON.parse(readFileSync("./package.json", "utf8"));
 
 const isProduction = process.env.NODE_ENV === "production";
 const isDevelopment = process.env.NODE_ENV === "development";
+const format = process.env.FORMAT || "esm";
 
 const baseConfig = {
   entryPoints: ["src/index.ts"],
   bundle: true,
   platform: "node",
   target: "node14",
-  format: "esm",
-  outfile: "dist/index.js",
   external: Object.keys(pkg.dependencies || {}),
   metafile: true,
   logLevel: "info",
 };
 
-const productionConfig = {
+// ESM configuration
+const esmConfig = {
   ...baseConfig,
+  format: "esm",
+  outfile: "dist/index.js",
+};
+
+// CommonJS configuration
+const cjsConfig = {
+  ...baseConfig,
+  format: "cjs",
+  outfile: "dist/index.cjs",
+};
+
+const productionConfig = {
   minify: true,
   treeShaking: true,
   define: {
@@ -31,7 +43,6 @@ const productionConfig = {
 };
 
 const developmentConfig = {
-  ...baseConfig,
   minify: false,
   define: {
     "process.env.NODE_ENV": '"development"',
@@ -41,10 +52,15 @@ const developmentConfig = {
 
 async function buildProject() {
   try {
-    const config = isProduction ? productionConfig : developmentConfig;
+    const envConfig = isProduction ? productionConfig : developmentConfig;
+    const formatConfig = format === "cjs" ? cjsConfig : esmConfig;
+    const config = { ...formatConfig, ...envConfig };
 
-    console.log(`🔨 构建模式: ${isProduction ? "Production" : "Development"}`);
-    console.log(`📦 压缩代码: ${config.minify ? "✅" : "❌"}`);
+    console.log(
+      `🔨 Build mode: ${isProduction ? "Production" : "Development"}`
+    );
+    console.log(`📦 Format: ${format.toUpperCase()}`);
+    console.log(`📦 Minify: ${config.minify ? "✅" : "❌"}`);
     console.log(`🗺️  Source Map: ${config.sourcemap ? "✅" : "❌"}`);
 
     const result = await build(config);
@@ -53,12 +69,12 @@ async function buildProject() {
       const analysis = await import("esbuild").then((m) =>
         m.analyzeMetafile(result.metafile)
       );
-      console.log("\n📊 构建分析:\n", analysis);
+      console.log(`\n📊 Build analysis (${format.toUpperCase()}):\n`, analysis);
     }
 
-    console.log("✅ 构建完成!");
+    console.log(`✅ Build completed (${format.toUpperCase()})!`);
   } catch (error) {
-    console.error("❌ 构建失败:", error);
+    console.error("❌ Build failed:", error);
     process.exit(1);
   }
 }

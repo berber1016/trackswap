@@ -16,7 +16,7 @@ import {
   ConvertProcessor,
   IPipelineProcessor,
   TokenizeProcessor,
-  PipelineStage,
+  TCXPipelineStage,
 } from "./processor.js";
 import { TCXContext, TCXFileType } from "./types.js";
 
@@ -345,7 +345,7 @@ export class TCXDecoder {
 
           // 2. Execute corresponding middleware hooks based on stage
           switch (processor.stage) {
-            case PipelineStage.TOKENIZE:
+            case TCXPipelineStage.TOKENIZE:
               if (context.tokens) {
                 context.tokens = await this.executeMiddlewareHook(
                   "onTokenize",
@@ -355,7 +355,7 @@ export class TCXDecoder {
               }
               break;
 
-            case PipelineStage.AST_GENERATE:
+            case TCXPipelineStage.AST_GENERATE:
               if (context.ast) {
                 context.ast = await this.executeMiddlewareHook(
                   "onAstGenerate",
@@ -365,7 +365,7 @@ export class TCXDecoder {
               }
               break;
 
-            case PipelineStage.CONVERT:
+            case TCXPipelineStage.CONVERT:
               if (context.result) {
                 context.result = await this.executeMiddlewareHook(
                   "onConvert",
@@ -375,7 +375,7 @@ export class TCXDecoder {
               }
               break;
 
-            case PipelineStage.COMPLETE:
+            case TCXPipelineStage.COMPLETE:
               if (context.result) {
                 context.result = await this.executeMiddlewareHook(
                   "onComplete",

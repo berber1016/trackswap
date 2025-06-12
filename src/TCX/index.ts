@@ -10,9 +10,3 @@ export * from "./middleware.js";
 
 // ============ Pipeline Processors ============
 export * from "./processor.js";
-
-import { TCXDecoder } from "./decoder.js";
-
-export default {
-  TCXDecoder,
-};

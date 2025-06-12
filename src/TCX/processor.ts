@@ -6,7 +6,7 @@ import { ITCXConverterPlugin } from "./base.js";
 /**
  * TCX pipeline stages
  */
-export enum PipelineStage {
+export enum TCXPipelineStage {
   TOKENIZE = "tokenize",
   AST_GENERATE = "ast-generate",
   CONVERT = "convert",
@@ -17,7 +17,7 @@ export enum PipelineStage {
  * Pipeline processor interface
  */
 export interface IPipelineProcessor {
-  stage: PipelineStage;
+  stage: TCXPipelineStage;
   name: string;
   process(context: TCXContext): Promise<TCXContext>;
 }
@@ -28,7 +28,7 @@ export interface IPipelineProcessor {
  * Tokenizer - convert XML to Token array
  */
 export class TokenizeProcessor implements IPipelineProcessor {
-  stage = PipelineStage.TOKENIZE;
+  stage = TCXPipelineStage.TOKENIZE;
   name = "tokenize-processor";
 
   async process(context: TCXContext): Promise<TCXContext> {
@@ -54,7 +54,7 @@ export class TokenizeProcessor implements IPipelineProcessor {
  * AST generator - convert Token array to AST tree
  */
 export class AstGenerateProcessor implements IPipelineProcessor {
-  stage = PipelineStage.AST_GENERATE;
+  stage = TCXPipelineStage.AST_GENERATE;
   name = "ast-generate-processor";
 
   async process(context: TCXContext): Promise<TCXContext> {
@@ -125,7 +125,7 @@ export class AstGenerateProcessor implements IPipelineProcessor {
  * Converter - convert AST to TCX data structure
  */
 export class ConvertProcessor implements IPipelineProcessor {
-  stage = PipelineStage.CONVERT;
+  stage = TCXPipelineStage.CONVERT;
   name = "convert-processor";
 
   constructor(
@@ -248,7 +248,7 @@ export class ConvertProcessor implements IPipelineProcessor {
  * Completion processor - final processing and cleanup
  */
 export class CompleteProcessor implements IPipelineProcessor {
-  stage = PipelineStage.COMPLETE;
+  stage = TCXPipelineStage.COMPLETE;
   name = "complete-processor";
 
   async process(context: TCXContext): Promise<TCXContext> {

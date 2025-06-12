@@ -1,6 +1,6 @@
 {
   "name": "trackswap",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "A powerful and flexible GPX parser and encoder library for Node.js and TypeScript. TrackSwap provides comprehensive support for GPX 1.1 format with advanced features like plugin system, middleware support, and optimized performance.",
   "main": "dist/index.cjs",
   "module": "dist/index.js",

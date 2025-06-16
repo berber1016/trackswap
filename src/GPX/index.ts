@@ -4,6 +4,8 @@ import { registerDefaultMiddlewares } from "./middleware.js";
 import { PipelineStage } from "./processor.js";
 export { GPXDecoder, GPXEncoder, registerDefaultMiddlewares, PipelineStage };
 
+export * from "./types.js";
+
 export default {
   GPXDecoder,
   GPXEncoder,

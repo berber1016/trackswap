@@ -42,7 +42,7 @@ export class TokenizeProcessor implements IPipelineProcessor {
     if (tokens.length === 0) {
       throw new Error("Not a valid TCX file");
     }
-
+    console.log("解析到 TOKENS", tokens);
     context.tokens = tokens;
     context.stats.processedTokens = tokens.length;
 
@@ -58,66 +58,44 @@ export class AstGenerateProcessor implements IPipelineProcessor {
   name = "ast-generate-processor";
 
   async process(context: TCXContext): Promise<TCXContext> {
-    if (!context.tokens || context.tokens.length === 0) {
-      throw new Error("Tokens are empty, cannot generate AST");
+    const startTime = Date.now();
+
+    if (!context.tokens) {
+      throw new Error("Tokens cannot be empty");
     }
-
-    const ast = this.buildAST(context.tokens);
-
-    if (!ast) {
-      throw new Error("Failed to generate AST");
-    }
-
-    context.ast = ast;
-
-    return context;
-  }
-
-  /**
-   * Build AST from tokens
-   */
-  private buildAST(tokens: Token[]): TokenAST | undefined {
-    if (tokens.length === 0) return undefined;
 
     const stack: TokenAST[] = [];
-    let current: TokenAST | undefined;
+    let root: TokenAST | undefined = undefined;
+    let current: TokenAST | null = null;
 
-    for (const token of tokens) {
+    for (const token of context.tokens) {
       if (token.type === "open") {
-        const node: TokenAST = {
+        const newElement: TokenAST = {
           tag: token.tag,
-          attributes: token.attributes,
+          attributes: token.attributes || {},
           children: [],
         };
 
-        if (current) {
-          current.children = current.children || [];
-          current.children.push(node);
+        if (!root) {
+          root = newElement;
+        } else if (current) {
+          current.children?.push(newElement);
         }
 
-        stack.push(node);
-        current = node;
-
-        // Set root node
-        if (!stack.length) {
-          if (!current) current = node;
-        }
+        stack.push(newElement);
+        current = newElement;
+      } else if (token.type === "text" && current) {
+        current.value = token.value;
       } else if (token.type === "close") {
         stack.pop();
-        current = stack[stack.length - 1];
-      } else if (token.type === "text" && current) {
-        // Add text content to current element
-        if (
-          token.value &&
-          typeof token.value === "string" &&
-          token.value.trim()
-        ) {
-          current.value = token.value.trim();
-        }
+        current = stack[stack.length - 1] || null;
       }
     }
 
-    return current;
+    context.ast = root;
+    context.performance.astTime = Date.now() - startTime;
+
+    return context;
   }
 }
 

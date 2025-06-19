@@ -1,6 +1,6 @@
 {
   "name": "trackswap",
-  "version": "0.0.7",
+  "version": "0.0.9",
   "description": "A powerful and flexible GPX parser and encoder library for Node.js and TypeScript. TrackSwap provides comprehensive support for GPX 1.1 format with advanced features like plugin system, middleware support, and optimized performance.",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
@@ -36,7 +36,7 @@
     "minify": "terser dist/**/*.js --compress --mangle --output dist/index.min.js --source-map",
     "analyze": "NODE_ENV=production ANALYZE=true node build.config.js",
     "start": "node dist/index.js",
-    "test:gpx": "cd example/gpx && rm -f output* test_*.json *_report.json *_encoded.xml && node test.js",
+    "test:gpx": "cd example/gpx && rm -f output* *.json *_encoded.xml && node test.js",
     "test:fit": "cd example/FIT && rm -rf output && node test.js",
     "prepublishOnly": "npm run build"
   },

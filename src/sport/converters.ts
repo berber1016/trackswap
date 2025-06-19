@@ -75,9 +75,9 @@ export class GPXToSportConverter extends BaseSportConverter {
   protected convertPoint(point: WptType): SportPointType | undefined {
     if (
       point.lat == null ||
-      point.lon == null ||
-      typeof point.lat !== "number" ||
-      typeof point.lon !== "number"
+      point.lon == null
+      // || typeof point.lat !== "number"
+      // || typeof point.lon !== "number"
     ) {
       return undefined;
     }
@@ -102,9 +102,11 @@ export class GPXToSportConverter extends BaseSportConverter {
       const wpt = wpts[i];
       if (
         wpt.lat != null &&
-        wpt.lon != null &&
-        typeof wpt.lat === "number" &&
-        typeof wpt.lon === "number"
+        wpt.lon != null
+        //
+        // 增加容错，如果不是 number 类型也能进行转换
+        //  && typeof wpt.lat === "number"
+        // &&  typeof wpt.lon === "number"
       ) {
         const point = this.convertPoint(wpt);
         if (point) points.push(point);
@@ -197,9 +199,10 @@ export class FITToSportConverter extends BaseSportConverter {
 
     if (
       positionLong == null ||
-      positionLat == null ||
-      typeof positionLong !== "number" ||
-      typeof positionLat !== "number"
+      positionLat == null
+      // ||
+      // typeof positionLong !== "number" ||
+      // typeof positionLat !== "number"
     ) {
       return undefined;
     }

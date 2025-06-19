@@ -35,12 +35,6 @@ export class WptConverter extends BaseGPXConverter {
       lon: this.parseFloat(ast.attributes!["lon"]),
     };
 
-    // Process other attributes
-    this.extractAttributes(ast, wpt, {
-      lat: "lat",
-      lon: "lon",
-    });
-
     // Process child nodes
     this.processChildren(ast, wpt, {
       ele: (child, target) => (target.ele = this.parseFloat(child.value)),

@@ -60,7 +60,13 @@ export type LinkType = {
  * GPX 1.1 version type
  */
 export interface GPX11Type {
+  /**
+   * gpx version 1.1
+   */
   version?: string;
+  /**
+   * You must include the name or URL of the software that created your GPX document. This allows others to inform the creator of a GPX instance document that fails to validate.
+   */
   creator?: string;
   xmlns?: string;
   // 'xmlns:xsi'?: string;
@@ -80,17 +86,41 @@ export interface GPX11Type {
   [key: string]: any | undefined;
 }
 
+/**
+ * Metadata about the file.
+ */
 export interface MetadataType {
+  /**
+   * The name of the GPX file.
+   */
   name?: string;
+  /**
+   * A description of the contents of the GPX file.
+   */
   desc?: string;
   /**
    * The person or organization who created the GPX file.
    */
   author?: PersonType;
+  /**
+   * Copyright and license information governing use of the file.
+   */
   copyright?: CopyrightType;
+  /**
+   * URLs associated with the location described in the file.
+   */
   link?: LinkType[];
+  /**
+   * The creation date of the file.
+   */
   time?: Date;
+  /**
+   * Keywords associated with the file. Search engines or databases can use this information to classify the data.
+   */
   keywords?: string;
+  /**
+   * Minimum and maximum coordinates which describe the extent of the coordinates in the file.
+   */
   bounds?: BoundsType;
   extensions?: ExtensionsType;
   [key: string]: any;

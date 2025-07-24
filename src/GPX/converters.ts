@@ -1,5 +1,5 @@
 import { BaseGPXConverter, BaseGPXMiddleware } from "./base.js";
-import { TokenAST, Token } from "../types.js";
+import { TokenAST, Token, ExtensionsType } from "../types.js";
 import {
   BoundsType,
   CopyrightType,
@@ -60,10 +60,11 @@ export class WptConverter extends BaseGPXConverter {
       magvar: (child, target) => (target.magvar = this.parseFloat(child.value)),
       dgpsid: (child, target) => (target.dgpsid = this.parseFloat(child.value)),
       extensions: (child, target) => {
-        // Find extensions converter
+        // Use extensions converter
         const decoder = context.metadata.get("decoder");
-        if (decoder) {
-          target.extensions = decoder.convertExtensions(child);
+        const extensionsConverter = decoder?.getConverter("extensions");
+        if (extensionsConverter) {
+          target.extensions = extensionsConverter.convert(child, context);
         }
       },
       link: (child, target) => {
@@ -104,8 +105,9 @@ export class RteConverter extends BaseGPXConverter {
       },
       extensions: (child, target) => {
         const decoder = context.metadata.get("decoder");
-        if (decoder) {
-          target.extensions = decoder.convertExtensions(child);
+        const extensionsConverter = decoder?.getConverter("extensions");
+        if (extensionsConverter) {
+          target.extensions = extensionsConverter.convert(child, context);
         }
       },
       link: (child, target) => {
@@ -150,8 +152,9 @@ export class TrkConverter extends BaseGPXConverter {
       },
       extensions: (child, target) => {
         const decoder = context.metadata.get("decoder");
-        if (decoder) {
-          target.extensions = decoder.convertExtensions(child);
+        const extensionsConverter = decoder?.getConverter("extensions");
+        if (extensionsConverter) {
+          target.extensions = extensionsConverter.convert(child, context);
         }
       },
       link: (child, target) => {
@@ -190,8 +193,9 @@ export class TrksegConverter extends BaseGPXConverter {
       },
       extensions: (child, target) => {
         const decoder = context.metadata.get("decoder");
-        if (decoder) {
-          target.extensions = decoder.convertExtensions(child);
+        const extensionsConverter = decoder?.getConverter("extensions");
+        if (extensionsConverter) {
+          target.extensions = extensionsConverter.convert(child, context);
         }
       },
     });
@@ -260,8 +264,9 @@ export class MetadataConverter extends BaseGPXConverter {
       },
       extensions: (child, target) => {
         const decoder = context.metadata.get("decoder");
-        if (decoder) {
-          target.extensions = decoder.convertExtensions(child);
+        const extensionsConverter = decoder?.getConverter("extensions");
+        if (extensionsConverter) {
+          target.extensions = extensionsConverter.convert(child, context);
         }
       },
       link: (child, target) => {
@@ -371,5 +376,71 @@ export class BoundsConverter extends BaseGPXConverter {
     });
 
     return bounds;
+  }
+}
+
+/**
+ * Extensions converter
+ */
+export class ExtensionsConverter extends BaseGPXConverter {
+  name = "extensions-converter";
+  supportedTags = ["extensions"];
+
+  convert(ast: TokenAST, context: DecoderContext): ExtensionsType | undefined {
+    const extensions: ExtensionsType = {};
+
+    // Process all child elements of extensions
+    ast.children?.forEach((child: TokenAST) => {
+      const extensionData = this.convertExtensionElement(child);
+      if (extensionData !== undefined) {
+        extensions[child.tag] = extensionData;
+      }
+    });
+
+    return extensions;
+  }
+
+  /**
+   * Convert individual extension element
+   */
+  private convertExtensionElement(extensionAST: TokenAST): any {
+    // If the extension has no children but has a value, return the value
+    if (!extensionAST.children?.length && extensionAST.value !== undefined) {
+      return this.parseExtensionValue(extensionAST.value);
+    }
+
+    // If the extension has children, process them recursively
+    if (extensionAST.children?.length) {
+      const result: any = {};
+
+      extensionAST.children.forEach((child: TokenAST) => {
+        const childData = this.convertExtensionElement(child);
+        if (childData !== undefined) {
+          result[child.tag] = childData;
+        }
+      });
+
+      return result;
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Parse extension value, trying to convert to appropriate type
+   */
+  private parseExtensionValue(value: string | number | undefined): any {
+    if (value === undefined) return undefined;
+
+    const strValue = String(value);
+
+    // Try to parse as number first
+    const numValue = parseFloat(strValue);
+    if (!isNaN(numValue) && isFinite(numValue)) {
+      return numValue;
+    }
+
+    // Return as string if not a valid number
+    return strValue;
   }
 }

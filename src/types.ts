@@ -139,6 +139,15 @@ export interface SportPointType {
 // track & session(fit) & Activity(tcx)
 export interface SportTrackType {
   name?: string;
+
+  // ==========GPX 1.1=============
+  GPX_cmt?: string;
+  GPX_desc?: string;
+  GPX_src?: string;
+  GPX_link?: string;
+  GPX_number?: number;
+  GPX_type?: string;
+
   // Sport type
   sport?: string;
   trackseg?: SportRouteSegType[];
@@ -160,6 +169,16 @@ export interface SportTrackType {
 export interface SportRouteSegType {
   name?: string;
   sport?: string;
+
+  // ==========GPX 1.1=============
+  GPX_cmt?: string;
+  GPX_desc?: string;
+  GPX_src?: string;
+  GPX_link?: string;
+  GPX_number?: number;
+  GPX_type?: string;
+
+  extensions?: ExtensionsType[];
   points?: SportPointType[];
   /**
    * Duration mapping tcx:Lap:TotalTimeSeconds

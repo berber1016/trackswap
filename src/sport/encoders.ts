@@ -26,6 +26,7 @@ import {
   TrackpointType,
   CourseType,
 } from "../TCX/types.js";
+import dayjs from "dayjs";
 
 /**
  * Convert degrees to semicircles (for FIT format)
@@ -52,6 +53,12 @@ export class SportToGPXEncoder extends BaseSportEncoder {
     const gpx: GPX11Type = {
       version: "1.1",
       creator: sportData.metadata?.creator || "TrackSwap",
+      metadata: {
+        name: sportData?.metadata?.fileName,
+        time: sportData?.metadata?.date
+          ? dayjs(sportData?.metadata?.date).toDate()
+          : undefined,
+      },
     };
 
     // Convert waypoints
@@ -76,31 +83,61 @@ export class SportToGPXEncoder extends BaseSportEncoder {
     return gpx;
   }
 
+  /**
+   * 将 SportPoint 转为 GPX 的 WPT Type 与 GPX1.1 映射
+   * @param points
+   * @returns
+   */
   private convertPoints2Wpts(points: SportPointType[]): WptType[] {
-    return points.map((point) => ({
-      lat: point.lat,
-      lon: point.lon,
-      ele: point.ele,
-      time: point.time ? this.convertTimeToDate(point.time) : undefined,
-      speed: point.speed,
-      magvar: point.magvar,
-      extensions: this.extractGPXExtensions(point),
-    }));
+    return points
+      ?.filter((v) => !!v.lat && !!v.lon)
+      .map((point) => ({
+        lat: point.lat,
+        lon: point.lon,
+        ele: point?.ele,
+        time: point?.time ? this.convertTimeToDate(point.time) : undefined,
+        speed: point?.speed,
+        geoidheight: point?.geoidheight,
+        name: point?.name,
+        cmt: point?.cmt,
+        desc: point?.desc,
+        type: point?.type,
+        hdop: point?.hdop,
+        vdop: point?.vdop,
+        pdop: point?.pdop,
+        ageofdgpsdata: point?.ageofdgpsdata,
+        magvar: point.magvar,
+        extensions: this.extractGPXExtensions(point),
+      }));
   }
 
   private convertRoute2GPXRoute(route: SportRouteSegType): RteType {
     return {
-      name: route.name,
+      name: route?.name,
+      cmt: route?.GPX_cmt,
+      desc: route?.GPX_desc,
+      number: route?.GPX_number,
+      type: route?.GPX_type,
       rtept: route.points ? this.convertPoints2Wpts(route.points) : [],
     };
   }
-
+  /**
+   * 转换 SportTrackType 到 GPX TrkType
+   * @param track
+   * @returns
+   */
   private convertTrack2GPXTrack(track: SportTrackType): TrkType {
     return {
-      name: track.name,
+      name: track?.name,
+      cmt: track?.GPX_cmt,
+      desc: track?.GPX_desc,
+      src: track?.GPX_src,
+      number: track?.GPX_number,
+      type: track?.GPX_type,
+      // extensions
       trkseg:
         track.trackseg?.map((seg) => ({
-          trkpt: seg.points ? this.convertPoints2Wpts(seg.points) : [],
+          trkpt: seg?.points?.length ? this.convertPoints2Wpts(seg.points) : [],
         })) || [],
     };
   }
@@ -109,17 +146,17 @@ export class SportToGPXEncoder extends BaseSportEncoder {
     const extensions: any = {};
 
     // Extract heart rate data
-    if (point.heart) {
+    if (point?.heart) {
       extensions["gpxtpx:hr"] = point.heart;
     }
 
     // Extract cadence data
-    if (point.cadence) {
+    if (point?.cadence) {
       extensions["gpxtpx:cad"] = point.cadence;
     }
 
     // Extract temperature data
-    if (point.temperature) {
+    if (point?.temperature) {
       extensions["gpxtpx:atemp"] = point.temperature;
     }
 
@@ -146,7 +183,7 @@ export class SportToFITEncoder extends BaseSportEncoder {
 
     // Convert tracks to sessionMesgs
     if (sportData.tracks?.length) {
-      fit.sessionMesgs = sportData.tracks.map((track) =>
+      fit.sessionMesgs = sportData?.tracks?.map((track) =>
         this.convertTrack2FITSession(track)
       );
     }
@@ -163,8 +200,8 @@ export class SportToFITEncoder extends BaseSportEncoder {
 
   private convertTrack2FITSession(track: SportTrackType): SessionMesgType {
     const session: SessionMesgType = {
-      event: track.name || "session",
-      sport: track.sport || "generic",
+      event: track?.name || "session",
+      sport: track?.sport || "generic",
       startTime: track.startTime
         ? this.convertTimeToString(track.startTime)
         : this.convertTimeToString(undefined),

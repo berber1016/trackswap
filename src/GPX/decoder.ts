@@ -4,6 +4,7 @@ import {
   BoundsConverter,
   CopyrightConverter,
   EmailConverter,
+  ExtensionsConverter,
   LinkConverter,
   MetadataConverter,
   PersonConverter,
@@ -73,6 +74,7 @@ export class GPXDecoder {
       new EmailConverter(),
       new CopyrightConverter(),
       new BoundsConverter(),
+      new ExtensionsConverter(),
     ];
 
     for (const converter of defaultConverters) {
@@ -492,6 +494,7 @@ export class GPXDecoder {
    * Convert Extensions (backward compatibility)
    */
   convertExtensions(extensionsAST: TokenAST): ExtensionsType {
+    console.log("extensionsAST", extensionsAST);
     const extensions: ExtensionsType = {};
     const { attributes, tag, value } = extensionsAST;
 

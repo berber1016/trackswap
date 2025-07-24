@@ -6,6 +6,7 @@ export const convertGPXExtensionsMapping = {
   "gpxtpx:atemp": "atemp",
   "gpxx:Temperature": "temperature",
   "gpxx:Depth": "depth",
+  "gpxpx:PowerInWatts": "power",
 };
 
 /**

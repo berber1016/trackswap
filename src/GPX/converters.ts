@@ -29,10 +29,9 @@ export class WptConverter extends BaseGPXConverter {
       console.error(`${this.name}: Missing required lat or lon attribute`);
       return undefined;
     }
-
     const wpt: WptType = {
-      lat: this.parseFloat(ast.attributes!["lat"]),
-      lon: this.parseFloat(ast.attributes!["lon"]),
+      lat: this.parseFloat(ast.attributes?.["lat"]) as number,
+      lon: this.parseFloat(ast.attributes?.["lon"]) as number,
     };
 
     // Process child nodes
@@ -41,6 +40,11 @@ export class WptConverter extends BaseGPXConverter {
       time: (child, target) =>
         (target.time = new Date(this.parseString(child.value))),
       speed: (child, target) => (target.speed = this.parseFloat(child.value)),
+      power: (child, target) => (target.power = this.parseFloat(child.value)),
+      cadence: (child, target) =>
+        (target.cadence = this.parseFloat(child.value)),
+      heartRate: (child, target) =>
+        (target.heartRate = this.parseFloat(child.value)),
       course: (child, target) => (target.course = this.parseFloat(child.value)),
       name: (child, target) => (target.name = this.parseString(child.value)),
       cmt: (child, target) => (target.cmt = this.parseString(child.value)),
@@ -59,12 +63,19 @@ export class WptConverter extends BaseGPXConverter {
         (target.geoidheight = this.parseFloat(child.value)),
       magvar: (child, target) => (target.magvar = this.parseFloat(child.value)),
       dgpsid: (child, target) => (target.dgpsid = this.parseFloat(child.value)),
+
       extensions: (child, target) => {
-        // Use extensions converter
+        // Use extensions converter to get flattened extensions
         const decoder = context.metadata.get("decoder");
         const extensionsConverter = decoder?.getConverter("extensions");
         if (extensionsConverter) {
-          target.extensions = extensionsConverter.convert(child, context);
+          const extensions = extensionsConverter.convert(child, context);
+          if (extensions) {
+            // Map extension fields directly to point object
+            this.mapExtensionsToPoint(extensions, target);
+            // Also keep original extensions for backward compatibility
+            target.extensions = extensions;
+          }
         }
       },
       link: (child, target) => {
@@ -76,6 +87,52 @@ export class WptConverter extends BaseGPXConverter {
     });
 
     return wpt;
+  }
+
+  /**
+   * Maps extension fields from the extensions object to the point object.
+   * This is necessary because the extensions converter flattens the extensions
+   * into a single object, but the point object expects them as separate fields.
+   */
+  private mapExtensionsToPoint(
+    extensions: ExtensionsType,
+    point: WptType
+  ): void {
+    // Map common extension fields to point properties
+    Object.entries(extensions).forEach(([key, value]) => {
+      if (
+        value !== undefined &&
+        (typeof value === "string" || typeof value === "number")
+      ) {
+        // Helper function to check if key matches any of the field names (exact match or ends with :field)
+        const matchesField = (fieldNames: string | string[]) => {
+          const names = Array.isArray(fieldNames) ? fieldNames : [fieldNames];
+          return names.some((name) => {
+            const lowerKey = key.toLowerCase();
+            const lowerName = name.toLowerCase();
+            return lowerKey === lowerName || lowerKey.endsWith(`:${lowerName}`);
+          });
+        };
+
+        // Map fields with flexible matching
+        if (matchesField("speed")) {
+          (point as WptType).speed = this.parseFloat(value);
+        } else if (matchesField("hr")) {
+          (point as WptType).heartRate = this.parseFloat(value);
+        } else if (matchesField(["cad", "cadence"])) {
+          (point as WptType).cadence = this.parseFloat(value);
+        } else if (matchesField(["PowerInWatts", "power"])) {
+          (point as any).power = this.parseFloat(value);
+        }
+        //  else if (matchesField(["atemp", "temp","Temperature"])) {
+        //   (point as any).temperature = this.parseFloat(value);
+        // } else if (matchesField("wtemp")) {
+        //   (point as any).wtemp = this.parseFloat(value);
+        // } else if (matchesField("Depth")) {
+        //   (point as any).depth = this.parseFloat(value);
+        // }
+      }
+    });
   }
 }
 
@@ -391,39 +448,31 @@ export class ExtensionsConverter extends BaseGPXConverter {
 
     // Process all child elements of extensions
     ast.children?.forEach((child: TokenAST) => {
-      const extensionData = this.convertExtensionElement(child);
-      if (extensionData !== undefined) {
-        extensions[child.tag] = extensionData;
-      }
+      this.flattenExtensionElement(child, extensions);
     });
 
     return extensions;
   }
 
   /**
-   * Convert individual extension element
+   * Flatten extension element, extracting all leaf nodes
    */
-  private convertExtensionElement(extensionAST: TokenAST): any {
-    // If the extension has no children but has a value, return the value
+  private flattenExtensionElement(
+    extensionAST: TokenAST,
+    result: ExtensionsType
+  ): void {
+    // If the extension has no children but has a value, it's a leaf node
     if (!extensionAST.children?.length && extensionAST.value !== undefined) {
-      return this.parseExtensionValue(extensionAST.value);
+      result[extensionAST.tag] = this.parseExtensionValue(extensionAST.value);
+      return;
     }
 
-    // If the extension has children, process them recursively
+    // If the extension has children, recursively process them
     if (extensionAST.children?.length) {
-      const result: any = {};
-
       extensionAST.children.forEach((child: TokenAST) => {
-        const childData = this.convertExtensionElement(child);
-        if (childData !== undefined) {
-          result[child.tag] = childData;
-        }
+        this.flattenExtensionElement(child, result);
       });
-
-      return result;
     }
-
-    return undefined;
   }
 
   /**

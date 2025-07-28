@@ -418,23 +418,72 @@ export class GPXEncoder {
     point: WptType,
     extensions: ExtensionsType
   ): ExtensionsType {
-    const result = this.deepClone(extensions);
+    const result: ExtensionsType = {};
 
-    // Process various extensions
-    const trackPointExt = this.buildTrackPointExtension(point, extensions);
-    if (Object.keys(trackPointExt).length > 0) {
-      result["gpxtpx:TrackPointExtension"] = trackPointExt;
-    }
+    // 定义扩展结构模板
+    const extensionStructures = {
+      "gpxtpx:TrackPointExtension": {
+        "gpxtpx:hr": "heartRate",
+        "gpxtpx:cad": "cadence",
+        "gpxtpx:speed": "speed",
+        "gpxtpx:atemp": "temperature",
+        "gpxtpx:wtemp": "wtemp",
+        "gpxtpx:temp": "temperature",
+      },
+      "gpxpx:PowerExtension": {
+        "gpxpx:PowerInWatts": "power",
+      },
+      "gpxx:GpxExtensions": {
+        "gpxx:Temperature": "temperature",
+        "gpxx:Depth": "depth",
+      },
+    };
 
-    const powerExt = this.buildPowerExtension(point, extensions);
-    if (Object.keys(powerExt).length > 0) {
-      result["gpxpx:PowerExtension"] = powerExt;
-    }
+    // 为每个扩展结构收集数据
+    Object.entries(extensionStructures).forEach(
+      ([extensionName, fieldMappings]) => {
+        const extensionData: Record<string, any> = {};
+        let hasData = false;
 
-    const gpxExt = this.buildGpxExtensions(point, extensions);
-    if (Object.keys(gpxExt).length > 0) {
-      result["gpxx:GpxExtensions"] = gpxExt;
-    }
+        // 遍历字段映射
+        Object.entries(fieldMappings).forEach(
+          ([extensionField, pointField]) => {
+            let value = undefined;
+
+            // 策略1: 直接从 point 字段获取
+            if ((point as any)[pointField] !== undefined) {
+              value = (point as any)[pointField];
+            }
+            // 策略2: 从扁平化的 extensions 中查找（完全匹配或 :field 结尾）
+            else if (extensions) {
+              // 完全匹配
+              if (extensions[extensionField] !== undefined) {
+                value = extensions[extensionField];
+              }
+              // :field 结尾匹配
+              else {
+                const fieldName = extensionField.split(":").pop(); // 获取 : 后面的部分
+                Object.entries(extensions).forEach(([key, val]) => {
+                  if (key.endsWith(`:${fieldName}`) && val !== undefined) {
+                    value = val;
+                  }
+                });
+              }
+            }
+
+            if (value !== undefined) {
+              extensionData[extensionField] = value;
+              hasData = true;
+            }
+          }
+        );
+
+        // 如果有数据，添加到结果中
+        if (hasData) {
+          result[extensionName] = extensionData;
+        }
+      }
+    );
 
     return result;
   }

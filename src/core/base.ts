@@ -88,7 +88,7 @@ export interface IProcessingContext {
  * Generic base converter abstract class
  */
 export abstract class BaseConverter<
-  TContext extends IProcessingContext = IProcessingContext
+  TContext extends IProcessingContext = IProcessingContext,
 > implements IConverterPlugin<TContext>
 {
   abstract name: string;
@@ -116,7 +116,8 @@ export abstract class BaseConverter<
 
   // ============ Generic Utility Methods ============
 
-  protected parseFloat(value: string | number | undefined): number {
+  protected parseFloat(value: string | number | undefined): number | undefined {
+    if (typeof value === "undefined") return undefined;
     if (typeof value === "number") return value;
     if (typeof value === "string") return parseFloat(value) || 0;
     return 0;
@@ -223,7 +224,7 @@ export abstract class BaseConverter<
  */
 export abstract class BaseMiddleware<
   TContext extends IProcessingContext = IProcessingContext,
-  TResult = any
+  TResult = any,
 > implements IMiddlewarePlugin<TContext, TResult>
 {
   abstract name: string;

@@ -91,6 +91,10 @@ export class GPXToSportConverter extends BaseSportConverter {
       lat: point.lat,
       lon: point.lon,
       ele: point.ele,
+      heartRate: point?.heartRate,
+      speed: point?.speed,
+      power: point?.power,
+      cadence: point?.cadence,
       time: this.convertTime(point.time),
       ...gpxExtensions,
     };
@@ -118,16 +122,21 @@ export class GPXToSportConverter extends BaseSportConverter {
   private convertGPXExtensions = (extensions: any): Record<string, any> => {
     let res: Record<string, any> = {};
     Object.entries(extensions).forEach(([key, value]) => {
-      if (typeof value !== "string" && typeof value !== "number") {
-        res = { ...res, ...this.convertGPXExtensions(value) };
-      } else if (typeof value !== "undefined" && value !== "undefined") {
+      if (typeof value !== "undefined" && value !== "undefined") {
         const resultKey =
           (convertGPXExtensionsMapping as Record<string, string>)[key] || key;
-        res[resultKey] = value;
+        res[resultKey] = this.autoNumber(value);
       }
     });
     return res;
   };
+
+  private autoNumber(val: any) {
+    if (typeof val === "string" && val.trim() !== "" && !isNaN(val as any)) {
+      return Number(val);
+    }
+    return val;
+  }
 }
 
 // ============ FIT Converter ============
@@ -211,7 +220,7 @@ export class FITToSportConverter extends BaseSportConverter {
       lat: round(semicirclesToDegrees(Number(positionLat)), 6),
       lon: round(semicirclesToDegrees(Number(positionLong)), 6),
       ele: altitude,
-      heart: heartRate,
+      heartRate: heartRate,
       power: power,
       cadence: cadence,
       temperature: temperature,

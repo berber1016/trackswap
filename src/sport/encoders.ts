@@ -146,18 +146,21 @@ export class SportToGPXEncoder extends BaseSportEncoder {
     const extensions: any = {};
 
     // Extract heart rate data
-    if (point?.heart) {
-      extensions["gpxtpx:hr"] = point.heart;
+    if (typeof point?.heartRate != "undefined") {
+      extensions["gpxtpx:hr"] = point.heartRate;
     }
 
     // Extract cadence data
-    if (point?.cadence) {
+    if (typeof point?.cadence != "undefined") {
       extensions["gpxtpx:cad"] = point.cadence;
     }
 
     // Extract temperature data
-    if (point?.temperature) {
+    if (typeof point?.temperature != "undefined") {
       extensions["gpxtpx:atemp"] = point.temperature;
+    }
+    if (typeof point?.power != "undefined") {
+      extensions["extractGPXExtensions"] = point.power;
     }
 
     return Object.keys(extensions).length > 0 ? extensions : undefined;
@@ -246,7 +249,7 @@ export class SportToFITEncoder extends BaseSportEncoder {
       altitude: point.ele,
       speed: point.speed,
       power: point.power,
-      heartRate: point.heart,
+      heartRate: point.heartRate,
       cadence: point.cadence,
       temperature: point.temperature,
       distance: point.distance,
@@ -388,8 +391,8 @@ export class SportToTCXEncoder extends BaseSportEncoder {
     };
 
     // Handle heart rate data
-    if (point.heart) {
-      trackpoint.HeartRateBpm = point.heart;
+    if (point.heartRate) {
+      trackpoint.HeartRateBpm = point.heartRate;
     }
 
     return trackpoint;

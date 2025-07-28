@@ -10,6 +10,7 @@
         "geoidheight",
         "gpxpx",
         "gpxtpx",
+        "gpxx",
         "hdop",
         "magvar",
         "maxlat",
@@ -31,6 +32,7 @@
         "Trkseg",
         "vdop",
         "WAKEBOARDING",
-        "Wpts"
+        "Wpts",
+        "wtemp"
     ]
 }

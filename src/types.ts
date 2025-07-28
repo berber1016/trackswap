@@ -66,7 +66,7 @@ export interface SportPointType {
   lon: LongitudeType;
   ele?: number;
   time?: number;
-  heart?: number;
+  heartRate?: number;
   // fit attribute
   distance?: number;
   accumulatedPower?: number;

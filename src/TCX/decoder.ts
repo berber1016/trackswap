@@ -9,6 +9,7 @@ import {
   ActivityListConverter,
   MultiSportSessionConverter,
   AbstractSourceConverter,
+  ExtensionsConverter,
 } from "./converters.js";
 import {
   AstGenerateProcessor,
@@ -67,6 +68,7 @@ export class TCXDecoder {
       new ActivityListConverter(),
       new MultiSportSessionConverter(),
       new AbstractSourceConverter(),
+      new ExtensionsConverter(),
     ];
 
     for (const converter of defaultConverters) {

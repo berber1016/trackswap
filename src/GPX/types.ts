@@ -213,6 +213,11 @@ export interface WptType {
    * You can add extend GPX by adding your own elements from another schema here.
    */
   extensions?: ExtensionsType;
+
+  // maybe
+  power?: number;
+  heartRate?: number;
+  cadence?: number;
 }
 
 /**

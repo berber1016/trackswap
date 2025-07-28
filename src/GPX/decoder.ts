@@ -494,7 +494,6 @@ export class GPXDecoder {
    * Convert Extensions (backward compatibility)
    */
   convertExtensions(extensionsAST: TokenAST): ExtensionsType {
-    console.log("extensionsAST", extensionsAST);
     const extensions: ExtensionsType = {};
     const { attributes, tag, value } = extensionsAST;
 

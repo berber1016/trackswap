@@ -88,41 +88,24 @@ export class TrackpointConverter extends BaseTCXConverter {
         const cadence: CadenceType = { Low: 0, High: 0 };
         this.processChildren(child, cadence, {
           Low: (subChild, subTarget) =>
-            (subTarget.Low = this.parseFloat(subChild.value)),
+            (subTarget.Low = this.parseFloat(subChild.value) || 0),
           High: (subChild, subTarget) =>
-            (subTarget.High = this.parseFloat(subChild.value)),
+            (subTarget.High = this.parseFloat(subChild.value) || 0),
         });
         target.Cadence = cadence;
       },
       SensorState: (child, target) =>
         (target.SensorState = child.value as "Present" | "Absent"),
-      Extensions: (child, target) =>
-        (target.Extensions = this.convertExtensions(child)),
+      Extensions: (child, target) => {
+        const decoder = context.metadata.get("decoder");
+        const extensionsConverter = decoder?.getConverter("Extensions");
+        if (extensionsConverter) {
+          target.Extensions = extensionsConverter.convert(child, context);
+        }
+      },
     });
 
     return trackpoint;
-  }
-
-  protected convertExtensions(extensionsAST: TokenAST): any {
-    const extensions: any = {};
-
-    extensionsAST.children?.forEach((child: TokenAST) => {
-      extensions[child.tag] = this.convertExtensionContent(child);
-    });
-
-    return extensions;
-  }
-
-  protected convertExtensionContent(extension: TokenAST): any {
-    if (extension.children?.length) {
-      const result: any = {};
-      extension.children.forEach((child) => {
-        result[child.tag] = this.convertExtensionContent(child);
-      });
-      return result;
-    } else {
-      return extension.value;
-    }
   }
 }
 
@@ -193,33 +176,16 @@ export class ActivityLapConverter extends BaseTCXConverter {
         if (track) target.Track.push(track);
       },
       Notes: (child, target) => (target.Notes = this.parseString(child.value)),
-      Extensions: (child, target) =>
-        (target.Extensions = this.convertExtensions(child)),
+      Extensions: (child, target) => {
+        const decoder = context.metadata.get("decoder");
+        const extensionsConverter = decoder?.getConverter("Extensions");
+        if (extensionsConverter) {
+          target.Extensions = extensionsConverter.convert(child, context);
+        }
+      },
     });
 
     return lap;
-  }
-
-  protected convertExtensions(extensionsAST: TokenAST): any {
-    const extensions: any = {};
-
-    extensionsAST.children?.forEach((child: TokenAST) => {
-      extensions[child.tag] = this.convertExtensionContent(child);
-    });
-
-    return extensions;
-  }
-
-  protected convertExtensionContent(extension: TokenAST): any {
-    if (extension.children?.length) {
-      const result: any = {};
-      extension.children.forEach((child) => {
-        result[child.tag] = this.convertExtensionContent(child);
-      });
-      return result;
-    } else {
-      return extension.value;
-    }
   }
 }
 
@@ -252,8 +218,13 @@ export class ActivityConverter extends BaseTCXConverter {
       Training: (child, target) =>
         (target.Training = this.convertTraining(child)),
       Creator: (child, target) => (target.Creator = this.convertCreator(child)),
-      Extensions: (child, target) =>
-        (target.Extensions = this.convertExtensions(child)),
+      Extensions: (child, target) => {
+        const decoder = context.metadata.get("decoder");
+        const extensionsConverter = decoder?.getConverter("Extensions");
+        if (extensionsConverter) {
+          target.Extensions = extensionsConverter.convert(child, context);
+        }
+      },
     });
 
     return activity;
@@ -285,28 +256,6 @@ export class ActivityConverter extends BaseTCXConverter {
     });
 
     return creator;
-  }
-
-  protected convertExtensions(extensionsAST: TokenAST): any {
-    const extensions: any = {};
-
-    extensionsAST.children?.forEach((child: TokenAST) => {
-      extensions[child.tag] = this.convertExtensionContent(child);
-    });
-
-    return extensions;
-  }
-
-  protected convertExtensionContent(extension: TokenAST): any {
-    if (extension.children?.length) {
-      const result: any = {};
-      extension.children.forEach((child) => {
-        result[child.tag] = this.convertExtensionContent(child);
-      });
-      return result;
-    } else {
-      return extension.value;
-    }
   }
 }
 
@@ -401,5 +350,58 @@ export class AbstractSourceConverter extends BaseTCXConverter {
     });
 
     return source;
+  }
+}
+
+/**
+ * Extensions converter
+ */
+export class ExtensionsConverter extends BaseTCXConverter {
+  name = "extensions-converter";
+  supportedTags = ["Extensions"];
+
+  convert(ast: TokenAST, context: TCXContext): any | undefined {
+    const extensions: any = {};
+
+    // 扁平化处理，忽略中间层
+    this.flattenExtensionElement(ast, extensions);
+
+    return extensions;
+  }
+
+  /**
+   * Flatten extension element, extracting all leaf nodes
+   */
+  private flattenExtensionElement(extensionAST: TokenAST, result: any): void {
+    // If the extension has no children but has a value, it's a leaf node
+    if (!extensionAST.children?.length && extensionAST.value !== undefined) {
+      result[extensionAST.tag] = this.parseExtensionValue(extensionAST.value);
+      return;
+    }
+
+    // If the extension has children, recursively process them
+    if (extensionAST.children?.length) {
+      extensionAST.children.forEach((child: TokenAST) => {
+        this.flattenExtensionElement(child, result);
+      });
+    }
+  }
+
+  /**
+   * Parse extension value, trying to convert to appropriate type
+   */
+  private parseExtensionValue(value: string | number | undefined): any {
+    if (value === undefined) return undefined;
+
+    const strValue = String(value);
+
+    // Try to parse as number first
+    const numValue = parseFloat(strValue);
+    if (!isNaN(numValue) && isFinite(numValue)) {
+      return numValue;
+    }
+
+    // Return as string if not a valid number
+    return strValue;
   }
 }

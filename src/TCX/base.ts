@@ -43,6 +43,9 @@ export abstract class BaseTCXConverter
     value: string | number | undefined
   ): number | undefined {
     const hr = this.parseFloat(value);
+    if (typeof hr === "undefined") {
+      return undefined;
+    }
     return hr > 0 && hr < 300 ? hr : undefined; // Reasonable heart rate range
   }
 
@@ -63,7 +66,10 @@ export abstract class BaseTCXConverter
     value: string | number | undefined
   ): number | undefined {
     const distance = this.parseFloat(value);
-    return distance >= 0 ? distance : undefined;
+    if (typeof distance === "undefined") {
+      return undefined;
+    }
+    return distance > 0 ? distance : undefined;
   }
 
   /**
@@ -71,6 +77,9 @@ export abstract class BaseTCXConverter
    */
   protected parseSpeed(value: string | number | undefined): number | undefined {
     const speed = this.parseFloat(value);
+    if (typeof speed === "undefined") {
+      return undefined;
+    }
     return speed >= 0 ? speed : undefined;
   }
 

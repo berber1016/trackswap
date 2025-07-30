@@ -141,26 +141,33 @@ export class SportToGPXEncoder extends BaseSportEncoder {
         })) || [],
     };
   }
-
+  /**
+   *
+   * @param point
+   * @returns
+   */
   private extractGPXExtensions(point: SportPointType): any {
     const extensions: any = {};
 
-    // Extract heart rate data
+    // Extract TrackPointExtension data
+    const trackPointData: any = {};
     if (typeof point?.heartRate != "undefined") {
-      extensions["gpxtpx:hr"] = point.heartRate;
+      trackPointData["gpxtpx:hr"] = point.heartRate;
     }
-
-    // Extract cadence data
     if (typeof point?.cadence != "undefined") {
-      extensions["gpxtpx:cad"] = point.cadence;
+      trackPointData["gpxtpx:cad"] = point.cadence;
+    }
+    if (typeof point?.temperature != "undefined") {
+      trackPointData["gpxtpx:atemp"] = point.temperature;
     }
 
-    // Extract temperature data
-    if (typeof point?.temperature != "undefined") {
-      extensions["gpxtpx:atemp"] = point.temperature;
+    if (Object.keys(trackPointData).length > 0) {
+      extensions["gpxtpx:TrackPointExtension"] = trackPointData;
     }
     if (typeof point?.power != "undefined") {
-      extensions["extractGPXExtensions"] = point.power;
+      extensions["gpxpx:PowerExtension"] = {
+        "gpxpx:PowerInWatts": point.power,
+      };
     }
 
     return Object.keys(extensions).length > 0 ? extensions : undefined;

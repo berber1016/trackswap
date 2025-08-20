@@ -6,6 +6,11 @@ import { TCXDecoder, TCXEncoder } from "./TCX/index.js";
 import { TCXFileType } from "./TCX/types.js";
 import { ActivityProcessor } from "./activity/processor.js";
 import { FileType } from "./types.js";
+import {
+  ExtensionManager,
+  TrackSwapExtension,
+  BaseMetricsExtension,
+} from "./activity/extensions/extensions.js";
 
 /**
  * Multi-format track exchange processing class
@@ -19,6 +24,7 @@ export class TrackSwap {
   private tcxDecoder: TCXDecoder;
   private tcxEncoder: TCXEncoder;
   private activityProcessor: ActivityProcessor;
+  private extensionManager: ExtensionManager;
 
   constructor() {
     this.gpxDecoder = new GPXDecoder();
@@ -28,6 +34,9 @@ export class TrackSwap {
     this.tcxDecoder = new TCXDecoder();
     this.tcxEncoder = new TCXEncoder();
     this.activityProcessor = new ActivityProcessor();
+    this.extensionManager = new ExtensionManager();
+
+    // 基础指标聚合已在 ExtensionManager 构造函数中默认注册
   }
 
   // ==================== GPX Functions ====================
@@ -465,6 +474,40 @@ export class TrackSwap {
    */
   getTCXEncoder(): TCXEncoder {
     return this.tcxEncoder;
+  }
+
+  // ==================== Extension Functions ====================
+
+  /**
+   * 扩展 TrackSwap 功能
+   * @param extension 要添加的扩展
+   */
+  extend(extension: TrackSwapExtension): TrackSwap {
+    this.extensionManager.registerExtension(extension);
+    return this;
+  }
+
+  /**
+   * 移除扩展
+   * @param extensionName 扩展名称
+   */
+  removeExtension(extensionName: string): TrackSwap {
+    this.extensionManager.unregisterExtension(extensionName);
+    return this;
+  }
+
+  /**
+   * 获取已注册的扩展列表
+   */
+  getExtensions(): TrackSwapExtension[] {
+    return this.extensionManager.getAllExtensions();
+  }
+
+  /**
+   * 使用扩展处理活动数据
+   */
+  processWithExtensions(file: FileType): FileType {
+    return this.extensionManager.processFile(file);
   }
 
   /**

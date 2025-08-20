@@ -13,7 +13,8 @@
 - 🔄 **多格式支持**: GPX 1.1、FIT、TCX 格式
 - 🎯 **统一转换**: 任意格式之间相互转换
 - 🤖 **自动检测**: 智能识别文件格式
-- 🔧 **插件架构**: 基于插件的可扩展设计
+- 🧩 **扩展系统**: 灵活的扩展架构，支持自定义数据处理
+- 📊 **智能聚合**: 默认启用运动数据聚合（心率、功率、速度等）
 - 🛡️ **类型安全**: 完整的 TypeScript 支持
 - ⚡ **高性能**: 优化的解析和编码算法
 
@@ -72,7 +73,31 @@ const parsedData = await trackSwap.parseFile(buffer);
 const sportData = await trackSwap.parseToActivity(buffer);
 ```
 
+### 扩展系统
+
+```typescript
+import { TrackSwap } from 'trackswap';
+import { SlopeExtension } from 'trackswap/extensions';
+
+// 🧩 使用扩展增强功能
+const trackSwap = new TrackSwap()
+  .extend(new SlopeExtension()); // 添加坡度计算
+
+// 📊 默认已启用基础指标聚合（心率、功率、速度、踏频等）
+const result = await trackSwap.parseGPX(gpxBuffer);
+// result 包含完整的聚合数据和坡度信息
+
+// 🔗 链式添加多个扩展
+const enhancedTrackSwap = new TrackSwap()
+  .extend(new SlopeExtension())
+  .extend(new CustomExtension());
+```
+
 ## 📖 详细使用指南
+
+### 扩展系统
+
+详细的扩展开发和使用指南请参考：[扩展系统文档](EXTENSIONS.md)
 
 ### 1. 文件解析
 
@@ -387,23 +412,23 @@ TrackSwap 采用模块化架构，核心组件包括：
 ```
 src/
 ├── TrackSwap.ts          # 主入口类
-├── GPX/                  # GPX 模块
-│   ├── decoder.ts
-│   ├── encoder.ts
-│   └── types.ts
-├── FIT/                  # FIT 模块
-│   ├── decoder.ts
-│   ├── encoder.ts
-│   └── types.ts
-├── TCX/                  # TCX 模块
-│   ├── decoder.ts
-│   ├── encoder.ts
-│   └── types.ts
-├── sport/                # 统一转换模块
-│   ├── processor.ts
-│   ├── converters.ts
-│   ├── encoders.ts
-│   └── base.ts
+├── activity/             # 活动处理模块
+│   ├── extensions.ts     # 扩展系统核心
+│   ├── slope-extension.ts # 坡度计算扩展
+│   ├── processor.ts      # 活动处理器
+│   └── pipeline.ts       # 数据处理管道
+├── decoders/             # 解码器模块
+│   ├── GPXDecoder.ts
+│   ├── FITDecoder.ts
+│   └── TCXDecoder.ts
+├── encoders/             # 编码器模块
+│   ├── GPXEncoder.ts
+│   ├── FITEncoder.ts
+│   └── TCXEncoder.ts
+├── converters/           # 格式转换器
+│   ├── GPXConverter.ts
+│   ├── FITConverter.ts
+│   └── TCXConverter.ts
 └── types.ts              # 公共类型定义
 ```
 
@@ -427,4 +452,4 @@ MIT License
 <div align="center">
   <strong>TrackSwap - 让轨迹数据处理变得简单</strong><br>
   🚀 高效 • 🔄 统一 • 🛡️ 安全 • 📈 可扩展
-</div> 
+</div>

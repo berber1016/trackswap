@@ -119,7 +119,7 @@ export abstract class BaseActivityConverter
     if (!time) return undefined;
 
     if (typeof time === "number") return time;
-    
+
     // Use dayjs for consistent time handling
     const dayjsTime = dayjs(time);
     return dayjsTime.isValid() ? dayjsTime.valueOf() : undefined;

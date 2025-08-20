@@ -10,6 +10,9 @@ export * from "./encoders.js";
 // ============ Processors ============
 export * from "./processor.js";
 
+// ============ Extensions ============
+export * from "./extensions/extensions.js";
+
 import {
   GPXToActivityConverter,
   FITToActivityConverter,
@@ -23,6 +26,11 @@ import {
 } from "./encoders.js";
 
 import { ActivityProcessor } from "./processor.js";
+import {
+  ExtensionManager,
+  BaseMetricsExtension,
+} from "./extensions/extensions.js";
+import { SlopeExtension } from "./extensions/slope-extension.js";
 
 export default {
   // Converters
@@ -37,4 +45,9 @@ export default {
 
   // Processors
   ActivityProcessor,
+
+  // Extensions
+  ExtensionManager,
+  BaseMetricsExtension,
+  SlopeExtension,
 };

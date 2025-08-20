@@ -201,6 +201,14 @@ export interface ActivityType {
    */
   max_cadence?: number;
   /**
+   * 平均心率（次/分）
+   */
+  avg_heart_rate?: number;
+  /**
+   * 最大心率（次/分）
+   */
+  max_heart_rate?: number;
+  /**
    * 训练压力评分
    */
   TTS?: number;

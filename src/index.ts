@@ -7,9 +7,17 @@ export {
   PipelineStage,
 } from "./GPX/index.js";
 export { TCXDecoder, TCXEncoder } from "./TCX/index.js";
+export * from "./activity/index.js";
 
-export { TrackSwap } from "./TrackSwap.js";
+// Export extension-related classes and interfaces
+export {
+  ExtensionManager,
+  BaseMetricsExtension,
+} from "./activity/extensions/extensions.js";
+export { SlopeExtension } from "./activity/extensions/slope-extension.js";
 
 import { TrackSwap } from "./TrackSwap.js";
+
+export { TrackSwap } from "./TrackSwap.js";
 
 export default TrackSwap;

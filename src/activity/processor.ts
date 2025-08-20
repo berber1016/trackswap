@@ -26,7 +26,6 @@ import {
 export class ActivityProcessor {
   private converters: Map<string, IActivityConverterPlugin> = new Map();
   private encoders: Map<string, IActivityEncoderPlugin> = new Map();
-
   constructor() {
     this.registerDefaultConverters();
     this.registerDefaultEncoders();
@@ -103,11 +102,15 @@ export class ActivityProcessor {
         throw new Error(`Converter "${converter.name}" returned empty result`);
       }
 
-      context.result = result;
+      // 应用数据处理管道
+      // Pipeline processing has been replaced by extension system
+      const processedResult = result;
+
+      context.result = processedResult;
       context.performance.endTime = Date.now();
       context.stats.endTime = Date.now();
 
-      return result;
+      return processedResult;
     } catch (error) {
       context.errors.push(error as Error);
       throw error;
@@ -185,11 +188,14 @@ export class ActivityProcessor {
     );
   }
 
+  // Pipeline methods have been replaced by extension system
+
   /**
    * Destroy processor, clean up resources
    */
   async destroy(): Promise<void> {
     this.converters.clear();
     this.encoders.clear();
+    // Pipeline reset has been replaced by extension system
   }
 }

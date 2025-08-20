@@ -4,8 +4,8 @@ import { FITDecoder, FITEncoder } from "./FIT/index.js";
 import { FITFileType } from "./FIT/types.js";
 import { TCXDecoder, TCXEncoder } from "./TCX/index.js";
 import { TCXFileType } from "./TCX/types.js";
-import { SportProcessor } from "./sport/processor.js";
-import { SportFileType } from "./types.js";
+import { ActivityProcessor } from "./activity/processor.js";
+import { FileType } from "./types.js";
 
 /**
  * Multi-format track exchange processing class
@@ -18,7 +18,7 @@ export class TrackSwap {
   private fitEncoder: FITEncoder;
   private tcxDecoder: TCXDecoder;
   private tcxEncoder: TCXEncoder;
-  private sportProcessor: SportProcessor;
+  private activityProcessor: ActivityProcessor;
 
   constructor() {
     this.gpxDecoder = new GPXDecoder();
@@ -27,7 +27,7 @@ export class TrackSwap {
     this.fitEncoder = new FITEncoder();
     this.tcxDecoder = new TCXDecoder();
     this.tcxEncoder = new TCXEncoder();
-    this.sportProcessor = new SportProcessor();
+    this.activityProcessor = new ActivityProcessor();
   }
 
   // ==================== GPX Functions ====================
@@ -116,22 +116,15 @@ export class TrackSwap {
     }
   }
 
-  // /**
-  //  * Encode FIT object to Blob
-  //  */
-  // async encodeFITBlob(
-  //   fitData: FITFileType,
-  //   fileType: "activity" | "course" = "activity"
-  // ): Promise<Blob> {
-  //   try {
-  //     return await this.fitEncoder.encodeToBlob(fitData, fileType);
-  //   } catch (error) {
-  //     console.error("FIT Blob encoding failed:", error);
-  //     throw new Error(`FIT Blob encoding failed: ${(error as Error).message}`);
-  //   }
-  // }
-
   // ==================== TCX Functions ====================
+
+  /**
+   * Parse TCX file string to TCX object
+   */
+  async parseTCXString(xmlString: string): Promise<TCXFileType> {
+    const buffer = Buffer.from(xmlString, "utf-8");
+    return this.parseTCX(buffer);
+  }
 
   /**
    * Parse TCX file Buffer to TCX object
@@ -147,14 +140,6 @@ export class TrackSwap {
       console.error("TCX parsing failed:", error);
       throw new Error(`TCX parsing failed: ${(error as Error).message}`);
     }
-  }
-
-  /**
-   * Parse TCX file string to TCX object
-   */
-  async parseTCXString(xmlString: string): Promise<TCXFileType> {
-    const buffer = Buffer.from(xmlString, "utf-8");
-    return this.parseTCX(buffer);
   }
 
   /**
@@ -184,52 +169,52 @@ export class TrackSwap {
   // ==================== Unified Format Conversion ====================
 
   /**
-   * Convert GPX data to unified SportFileType format
+   * Convert GPX data to unified Activity format
    */
-  async convertGPXToSport(gpxData: GPX11Type): Promise<SportFileType> {
-    return await this.sportProcessor.convertToSport(gpxData, "gpx");
+  async convertGPXToActivity(gpxData: GPX11Type): Promise<FileType> {
+    return await this.activityProcessor.convertToActivity(gpxData, "gpx");
   }
 
   /**
-   * Convert FIT data to unified SportFileType format
+   * Convert FIT data to unified Activity format
    */
-  async convertFITToSport(fitData: FITFileType): Promise<SportFileType> {
-    return await this.sportProcessor.convertToSport(fitData, "fit");
+  async convertFITToActivity(fitData: FITFileType): Promise<FileType> {
+    return await this.activityProcessor.convertToActivity(fitData, "fit");
   }
 
   /**
-   * Convert TCX data to unified SportFileType format
+   * Convert TCX data to unified Activity format
    */
-  async convertTCXToSport(tcxData: TCXFileType): Promise<SportFileType> {
-    return await this.sportProcessor.convertToSport(tcxData, "tcx");
+  async convertTCXToActivity(tcxData: TCXFileType): Promise<FileType> {
+    return await this.activityProcessor.convertToActivity(tcxData, "tcx");
   }
 
   /**
-   * Convert SportFileType to GPX format
+   * Convert FileType to GPX format
    */
-  async convertSportToGPX(sportData: SportFileType): Promise<GPX11Type> {
-    return (await this.sportProcessor.encodeSport(
-      sportData,
+  async convertActivityToGPX(file: FileType): Promise<GPX11Type> {
+    return (await this.activityProcessor.encodeActivity(
+      file,
       "gpx"
     )) as GPX11Type;
   }
 
   /**
-   * Convert SportFileType to FIT format
+   * Convert Activity to FIT format
    */
-  async convertSportToFIT(sportData: SportFileType): Promise<FITFileType> {
-    return (await this.sportProcessor.encodeSport(
-      sportData,
+  async convertActivityToFIT(file: FileType): Promise<FITFileType> {
+    return (await this.activityProcessor.encodeActivity(
+      file,
       "fit"
     )) as FITFileType;
   }
 
   /**
-   * Convert SportFileType to TCX format
+   * Convert Activity to TCX format
    */
-  async convertSportToTCX(sportData: SportFileType): Promise<TCXFileType> {
-    return (await this.sportProcessor.encodeSport(
-      sportData,
+  async convertActivityToTCX(file: FileType): Promise<TCXFileType> {
+    return (await this.activityProcessor.encodeActivity(
+      file,
       "tcx"
     )) as TCXFileType;
   }
@@ -283,17 +268,17 @@ export class TrackSwap {
           );
       }
 
-      // 2. Convert to unified SportFileType format
-      let sportData: SportFileType;
+      // 2. Convert to unified Activity format
+      let file: FileType;
       switch (detectedSourceType) {
         case "gpx":
-          sportData = await this.convertGPXToSport(sourceData as GPX11Type);
+          file = await this.convertGPXToActivity(sourceData as GPX11Type);
           break;
         case "fit":
-          sportData = await this.convertFITToSport(sourceData as FITFileType);
+          file = await this.convertFITToActivity(sourceData as FITFileType);
           break;
         case "tcx":
-          sportData = await this.convertTCXToSport(sourceData as TCXFileType);
+          file = await this.convertTCXToActivity(sourceData as TCXFileType);
           break;
         default:
           throw new Error(
@@ -304,13 +289,13 @@ export class TrackSwap {
       // 3. Encode to target format
       switch (targetType) {
         case "gpx":
-          const gpxData = await this.convertSportToGPX(sportData);
+          const gpxData = await this.convertActivityToGPX(file);
           return await this.encodeGPX(gpxData);
         case "fit":
-          const fitData = await this.convertSportToFIT(sportData);
+          const fitData = await this.convertActivityToFIT(file);
           return await this.encodeFIT(fitData);
         case "tcx":
-          const tcxData = await this.convertSportToTCX(sportData);
+          const tcxData = await this.convertActivityToTCX(file);
           return await this.encodeTCX(tcxData);
         default:
           throw new Error(`Unsupported target file format: ${targetType}`);
@@ -396,15 +381,15 @@ export class TrackSwap {
   }
 
   /**
-   * Parse file and convert to SportFileType format
+   * Parse file and convert to Activity format
    * @param buffer File Buffer
    * @param sourceType Source file format (optional, auto-detect if not provided)
-   * @returns SportFileType format data
+   * @returns FileType format data
    */
-  async parseToSport(
+  async parseToActivity(
     buffer: Buffer,
     sourceType?: "gpx" | "fit" | "tcx"
-  ): Promise<SportFileType> {
+  ): Promise<FileType> {
     const detectedSourceType = sourceType || this.detectFormat(buffer);
 
     if (detectedSourceType === "unknown") {
@@ -419,23 +404,23 @@ export class TrackSwap {
         if (!gpxData) {
           throw new Error("GPX parsing failed");
         }
-        return this.convertGPXToSport(gpxData);
+        return this.convertGPXToActivity(gpxData);
       case "fit":
         const fitData = await this.parseFIT(buffer);
-        return this.convertFITToSport(fitData);
+        return this.convertFITToActivity(fitData);
       case "tcx":
         const tcxData = await this.parseTCX(buffer);
-        return this.convertTCXToSport(tcxData);
+        return this.convertTCXToActivity(tcxData);
       default:
         throw new Error(`Unsupported file format: ${detectedSourceType}`);
     }
   }
 
   /**
-   * Get Sport processor instance
+   * Get Activity processor instance
    */
-  getSportProcessor(): SportProcessor {
-    return this.sportProcessor;
+  getActivityProcessor(): ActivityProcessor {
+    return this.activityProcessor;
   }
 
   // ==================== Instance Management ====================
@@ -489,9 +474,9 @@ export class TrackSwap {
     await this.gpxDecoder.destroy();
     await this.fitDecoder.destroy();
     await this.tcxDecoder.destroy();
-    await this.sportProcessor.destroy();
+    await this.activityProcessor.destroy();
   }
 }
 
 // Default export
-export default { TrackSwap };
+export default TrackSwap;

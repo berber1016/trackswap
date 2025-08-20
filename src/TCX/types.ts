@@ -94,7 +94,7 @@ export interface HistoryType {
   Running?: HistoryFolderType;
   Biking?: HistoryFolderType;
   Other?: HistoryFolderType;
-  MultiSport?: HistoryFolderType;
+  MultiActivity?: HistoryFolderType;
   Extensions?: ExtensionsType;
 }
 
@@ -117,11 +117,11 @@ export interface WeekType {
 
 export interface ActivityListType {
   Activity?: ActivityType[];
-  MultiSportSession?: MultiSportSessionType[];
+  MultiActivitySession?: MultiActivitySessionType[];
 }
 
 export interface ActivityType {
-  Sport?: "Other" | "Running" | "Biking";
+  Activity?: "Other" | "Running" | "Biking";
   Id: string;
   Lap: ActivityLapType[];
   Notes?: string;
@@ -183,20 +183,20 @@ export interface HeartRateInBeatsPerMinuteType {
   Value: number;
 }
 
-export interface MultiSportSessionType {
+export interface MultiActivitySessionType {
   Id?: string;
-  FirstSport?: FirstSportType;
-  NextSport?: NextSportType[];
+  FirstActivity?: FirstActivityType;
+  NextActivity?: NextActivityType[];
   Notes?: string;
 }
 
-export interface FirstSportType {
+export interface FirstActivityType {
   Activity?: ActivityType;
 }
 /**
  * Each sport contains an optional transition and a run.
  */
-export interface NextSportType {
+export interface NextActivityType {
   Transition?: ActivityLapType;
   Activity?: ActivityType;
 }

@@ -1,7 +1,12 @@
 export * from "./types.js";
-export * from "./FIT/index.js";
-export * from "./GPX/index.js";
-export * from "./TCX/index.js";
+export { FITDecoder, FITEncoder } from "./FIT/index.js";
+export {
+  GPXDecoder,
+  GPXEncoder,
+  registerDefaultMiddlewares,
+  PipelineStage,
+} from "./GPX/index.js";
+export { TCXDecoder, TCXEncoder } from "./TCX/index.js";
 
 export { TrackSwap } from "./TrackSwap.js";
 

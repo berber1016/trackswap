@@ -69,7 +69,7 @@ const convertedBuffer = await trackSwap.convertFile(
 const parsedData = await trackSwap.parseFile(buffer);
 
 // 🏃‍♂️ Parse and convert to unified sport data format
-const sportData = await trackSwap.parseToSport(buffer);
+const sportData = await trackSwap.parseToActivity(buffer);
 ```
 
 ## 📖 Detailed Usage Guide
@@ -136,18 +136,18 @@ const result = await trackSwap.convertFile(sourceBuffer, 'fit', 'gpx');
 // GPX ↔ FIT ↔ TCX (convert between any formats)
 ```
 
-#### SportFileType Unified Format
+#### ActivityType Unified Format
 
 ```typescript
 // Convert to unified sport data format
-const gpxSport = await trackSwap.convertGPXToSport(gpxData);
-const fitSport = await trackSwap.convertFITToSport(fitData);
-const tcxSport = await trackSwap.convertTCXToSport(tcxData);
+const gpxActivity = await trackSwap.convertGPXToActivity(gpxData);
+const fitActivity = await trackSwap.convertFITToActivity(fitData);
+const tcxActivity = await trackSwap.convertTCXToActivity(tcxData);
 
 // Convert from unified format back to specific formats
-const gpxData = await trackSwap.convertSportToGPX(sportData);
-const fitData = await trackSwap.convertSportToFIT(sportData);
-const tcxData = await trackSwap.convertSportToTCX(sportData);
+const gpxData = await trackSwap.convertActivityToGPX(sportData);
+const fitData = await trackSwap.convertActivityToFIT(sportData);
+const tcxData = await trackSwap.convertActivityToTCX(sportData);
 ```
 
 ### 3. Smart Parsing
@@ -162,8 +162,8 @@ const parsedData = await trackSwap.parseFile(buffer);
 const parsedData = await trackSwap.parseFile(buffer, 'gpx'); // specify format
 
 // 🏃‍♂️ Parse to unified format
-const sportData = await trackSwap.parseToSport(buffer);
-const sportData = await trackSwap.parseToSport(buffer, 'fit'); // specify format
+const sportData = await trackSwap.parseToActivity(buffer);
+const sportData = await trackSwap.parseToActivity(buffer, 'fit'); // specify format
 ```
 
 ## 🔧 API Reference
@@ -180,7 +180,7 @@ const sportData = await trackSwap.parseToSport(buffer, 'fit'); // specify format
 | `parseTCX(buffer)` | Parse TCX Buffer | `Buffer` | `Promise<TCXFileType>` |
 | `parseTCXString(xml)` | Parse TCX string | `string` | `Promise<TCXFileType>` |
 | `parseFile(buffer, type?)` | Unified parsing method | `Buffer, string?` | `Promise<GPX11Type \| FITFileType \| TCXFileType>` |
-| `parseToSport(buffer, type?)` | Parse to unified format | `Buffer, string?` | `Promise<SportFileType>` |
+| `parseToActivity(buffer, type?)` | Parse to unified format | `Buffer, string?` | `Promise<ActivityType>` |
 
 #### Encoding Methods
 
@@ -198,19 +198,19 @@ const sportData = await trackSwap.parseToSport(buffer, 'fit'); // specify format
 | Method | Description | Parameters | Return Value |
 |--------|-------------|------------|--------------|
 | `convertFile(buffer, target, source?)` | Unified conversion method | `Buffer, string, string?` | `Promise<Buffer>` |
-| `convertGPXToSport(data)` | GPX → Sport | `GPX11Type` | `Promise<SportFileType>` |
-| `convertFITToSport(data)` | FIT → Sport | `FITFileType` | `Promise<SportFileType>` |
-| `convertTCXToSport(data)` | TCX → Sport | `TCXFileType` | `Promise<SportFileType>` |
-| `convertSportToGPX(data)` | Sport → GPX | `SportFileType` | `Promise<GPX11Type>` |
-| `convertSportToFIT(data)` | Sport → FIT | `SportFileType` | `Promise<FITFileType>` |
-| `convertSportToTCX(data)` | Sport → TCX | `SportFileType` | `Promise<TCXFileType>` |
+| `convertGPXToActivity(data)` | GPX → Activity | `GPX11Type` | `Promise<ActivityType>` |
+| `convertFITToActivity(data)` | FIT → Activity | `FITFileType` | `Promise<ActivityType>` |
+| `convertTCXToActivity(data)` | TCX → Activity | `TCXFileType` | `Promise<ActivityType>` |
+| `convertActivityToGPX(data)` | Activity → GPX | `ActivityType` | `Promise<GPX11Type>` |
+| `convertActivityToFIT(data)` | Activity → FIT | `ActivityType` | `Promise<FITFileType>` |
+| `convertActivityToTCX(data)` | Activity → TCX | `ActivityType` | `Promise<TCXFileType>` |
 
 #### Utility Methods
 
 | Method | Description | Parameters | Return Value |
 |--------|-------------|------------|--------------|
 | `detectFormat(buffer)` | Detect file format | `Buffer` | `'gpx' \| 'fit' \| 'tcx' \| 'unknown'` |
-| `getSportProcessor()` | Get sport processor | - | `SportProcessor` |
+| `getActivityProcessor()` | Get sport processor | - | `ActivityProcessor` |
 | `destroy()` | Clean up resources | - | `Promise<void>` |
 
 ## 🌟 Real-World Examples
@@ -262,7 +262,7 @@ async function analyzeTrack(buffer: Buffer) {
   console.log(`File format: ${format}`);
   
   // 📊 Convert to unified format for analysis
-  const sportData = await trackSwap.parseToSport(buffer);
+  const sportData = await trackSwap.parseToActivity(buffer);
   
   // Analyze data
   const analysis = {
@@ -285,27 +285,27 @@ async function analyzeTrack(buffer: Buffer) {
 ```typescript
 async function mergeMultiFormatTracks(files: { buffer: Buffer, name: string }[]) {
   const trackSwap = new TrackSwap();
-  const allSportData: SportFileType[] = [];
+  const allActivityData: ActivityType[] = [];
   
   // 🔄 Convert all formats to unified format
   for (const file of files) {
     try {
-      const sportData = await trackSwap.parseToSport(file.buffer);
+      const sportData = await trackSwap.parseToActivity(file.buffer);
       sportData.metadata = { ...sportData.metadata, originalFile: file.name };
-      allSportData.push(sportData);
+      allActivityData.push(sportData);
     } catch (error) {
       console.error(`Parsing failed: ${file.name}`, error);
     }
   }
   
   // Data fusion logic
-  const mergedData = mergeSportData(allSportData);
+  const mergedData = mergeActivityData(allActivityData);
   
   // Output to different formats
   const results = {
-    gpx: await trackSwap.convertSportToGPX(mergedData),
-    fit: await trackSwap.convertSportToFIT(mergedData),
-    tcx: await trackSwap.convertSportToTCX(mergedData)
+    gpx: await trackSwap.convertActivityToGPX(mergedData),
+    fit: await trackSwap.convertActivityToFIT(mergedData),
+    tcx: await trackSwap.convertActivityToTCX(mergedData)
   };
   
   await trackSwap.destroy();
@@ -327,17 +327,17 @@ TrackSwap adopts a modular architecture with core components including:
 │  │ • GPXDecoder/Encoder - GPX file processing              │ │
 │  │ • FITDecoder/Encoder - FIT file processing              │ │
 │  │ • TCXDecoder/Encoder - TCX file processing              │ │
-│  │ • SportProcessor - Unified format conversion            │ │
+│  │ • ActivityProcessor - Unified format conversion            │ │
 │  └─────────────────────────────────────────────────────────┘ │
 │                                                             │
 │  🔄 Conversion Engine                                       │
 │  ┌─────────────────────────────────────────────────────────┐ │
-│  │ • GPXToSportConverter - GPX → SportFileType            │ │
-│  │ • FITToSportConverter - FIT → SportFileType            │ │
-│  │ • TCXToSportConverter - TCX → SportFileType            │ │
-│  │ • SportToGPXEncoder - SportFileType → GPX              │ │
-│  │ • SportToFITEncoder - SportFileType → FIT              │ │
-│  │ • SportToTCXEncoder - SportFileType → TCX              │ │
+│  │ • GPXToActivityConverter - GPX → ActivityType            │ │
+│  │ • FITToActivityConverter - FIT → ActivityType            │ │
+│  │ • TCXToActivityConverter - TCX → ActivityType            │ │
+│  │ • ActivityToGPXEncoder - ActivityType → GPX              │ │
+│  │ • ActivityToFITEncoder - ActivityType → FIT              │ │
+│  │ • ActivityToTCXEncoder - ActivityType → TCX              │ │
 │  └─────────────────────────────────────────────────────────┘ │
 │                                                             │
 │  🎯 Unified Interface                                       │

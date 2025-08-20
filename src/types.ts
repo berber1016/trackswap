@@ -1,10 +1,4 @@
-import {
-  LapMesgType,
-  RecordMesgType,
-  SessionMesgType,
-  UserProfileMesgType,
-} from "./FIT/types.js";
-import { IntensityType, TriggerMethodType } from "./TCX/types.js";
+import { IntensityType } from "./TCX/types.js";
 
 export interface Token {
   type: "open" | "close" | "text";
@@ -46,72 +40,245 @@ export interface ExtensionsType {
   [key: string]: string | number | undefined | ExtensionsType;
 }
 
-export interface SportFileType {
+/**
+ * Parse File Type
+ */
+export interface FileType {
+  // ========== file origin message ==========
   metadata?: {
     originType: "GPX" | "FIT" | "TCX" | "HIJSON";
     fileName?: string;
     fileType?: string;
-    creator?: string;
-    date?: string;
   };
-  points?: SportPointType[];
-  routes?: SportRouteSegType[];
-  tracks?: SportTrackType[];
+  /**
+   * 描述 gpx points
+   */
+  points?: ActivityRecordType[];
+  /**
+   * 描述 gpx routes、 tcx course
+   */
+  routes?: ActivityLapType[];
 
-  __fit__UserProfileMesgs?: UserProfileMesgType[];
+  activities?: ActivityType[];
+  userProfile?: UserProfileType;
 }
 
-export interface SportPointType {
-  lat: LatitudeType;
-  lon: LongitudeType;
-  ele?: number;
-  time?: number;
-  heartRate?: number;
-  // fit attribute
-  distance?: number;
-  accumulatedPower?: number;
-  speed?: number;
-  power?: number;
-  cadence?: number;
-  temperature?: number;
-  enhancedAltitude?: number;
-  enhancedSpeed?: number;
-  __fit__RecordMesgType?: RecordMesgType;
+export interface UserProfileType {
+  // ========== user attribute ==========
+  name?: string;
+  weight?: number;
+  gender?: string;
+  age?: number;
+  height?: number;
+  language?: string;
+  defaultMaxBikingHeartRate?: number;
+  defaultMaxHeartRate?: number;
+  // ========== setting ==========
+  hrSetting?: string;
+  speedSetting?: string;
+  distSetting?: string;
+  powerSetting?: string;
+  activityClass?: number;
+  positionSetting?: string;
+  temperatureSetting?: string;
+  elevSetting?: string;
+  weightSetting?: string;
+}
 
-  // ================== GPX Additional Properties ===============
+/**
+ * activity type
+ *
+ * 对应 gpx 的 trk ， fit 的 sessions, tcx 的 Activity
+ */
+export interface ActivityType {
   /**
-   * Magnetic variation (in degrees) at the point
+   * 活动索引
    */
-  magvar?: DegreesType;
-  geoidheight?: number;
+  index: number;
   /**
-   * The GPS name of the waypoint. This field will be transferred to and from the GPS. GPX does not place restrictions on the length of this field or the characters contained in it. It is up to the receiving application to validate the field before sending it to the GPS.
+   * 活动名称
    */
   name?: string;
   /**
-   * GPS waypoint comment. Sent to GPS as comment.
+   * 活动类型
    */
-  cmt?: string;
+  sport_type?: string;
   /**
-   * A text description of the element. Holds additional information about the element intended for the user, not the GPS.
+   * 活动描述
    */
-  desc?: string;
+  description?: string;
   /**
-   * Source of data. Included to give user some idea of reliability and accuracy of data. "Garmin eTrex", "USGS quad Boston North", e.g.
+   * 活动时间戳
    */
-  src?: string;
+  timestamp?: number;
   /**
-   * Text of GPS symbol name. For interchange with other programs, use the exact spelling of the symbol as displayed on the GPS. If the GPS abbreviates words, spell them out.
+   * 开始时间(时间戳)
    */
-  sym?: string;
+  start_time?: number;
   /**
-   * Type (classification) of the waypoint.
+   * 结束时间(时间戳)
    */
-  type?: string;
+  end_time?: number;
   /**
-   * Number of satellites used to calculate the GPX fix.
+   * 开始纬度
    */
-  sat?: string;
+  start_lat?: LatitudeType;
+  /**
+   * 开始经度
+   */
+  start_lon?: LongitudeType;
+  /**
+   * 结束纬度
+   */
+  end_lat?: LatitudeType;
+  /**
+   * 结束经度
+   */
+  end_lon?: LongitudeType;
+  /**
+   * 总计时时间（不包括暂停时间）
+   */
+  total_timer_time?: number;
+  /**
+   * 总经过时间（包括暂停时间）
+   */
+  total_elapsed_time?: number;
+  /**
+   * 总距离
+   */
+  total_distance?: number;
+  /**
+   * 总上升高度
+   */
+  total_ascent?: number;
+  /**
+   * 总下降高度
+   */
+  total_descent?: number;
+
+  /**
+   * 总周期数（如踏频、划桨次数等）
+   */
+  total_cycles?: number;
+  /**
+   * 总功（焦耳）
+   */
+  total_work?: number;
+  /**
+   * 总划桨/踏步次数
+   */
+  total_strokes?: number;
+  /**
+   * 平均速度（m/s）
+   */
+  avg_speed?: number;
+  /**
+   * 最大速度（m/s）
+   */
+  max_speed?: number;
+  /**
+   * 平均功率（W）
+   */
+  avg_power?: number;
+  /**
+   * 最大功率（W）
+   */
+  max_power?: number;
+  /**
+   * 标准化功率
+   */
+  normalized_power?: number;
+  /**
+   * 阈值功率（W）
+   */
+  threshold_power?: number;
+  /**
+   * 平均踏频（次/分）
+   */
+  avg_cadence?: number;
+  /**
+   * 最大踏频（次/分）
+   */
+  max_cadence?: number;
+  /**
+   * 训练压力评分
+   */
+  TTS?: number;
+  /**
+   * 强度因子
+   */
+  IF?: number;
+  /**
+   * 总消耗卡路里
+   */
+  total_calories?: number;
+  /**
+   * 总脂肪消耗卡路里
+   */
+  total_fat_calories?: number;
+
+  laps?: ActivityLapType[];
+}
+
+export interface ActivityRecordType {
+  /**
+   * 记录索引
+   */
+  index: number;
+  /**
+   * 纬度
+   */
+  lat: LatitudeType;
+  /**
+   * 经度
+   */
+  lon: LongitudeType;
+  /**
+   * 海拔
+   */
+  altitude?: number;
+  /**
+   * 时间
+   */
+  timestamp?: number;
+  /**
+   * 心率
+   */
+  heart_rate?: number;
+  /**
+   * 距离
+   */
+  distance?: number;
+  /**
+   * 累计功率
+   */
+  accumulated_power?: number;
+  /**
+   * 速度
+   */
+  speed?: number;
+  /**
+   * 功率
+   */
+  power?: number;
+  /**
+   * 踏频
+   */
+  cadence?: number;
+  /**
+   * 温度
+   */
+  temperature?: number;
+  /**
+   * 增强海拔
+   */
+  enhanced_altitude?: number;
+  /**
+   * 增强速度
+   */
+  enhanced_speed?: number;
+
+  // ================== GPX Additional Properties ===============
   /**
    * Horizontal dilution of precision.
    */
@@ -125,142 +292,161 @@ export interface SportPointType {
    */
   pdop?: number;
   /**
-   * Number of seconds since last DGPS update.
+   * 转弯角度
    */
-  ageofdgpsdata?: number;
-  /**
-   * ID of DGPS station used in differential correction.
-   */
-  dgpsid?: DegreesType;
   turn?: number;
-  extensions?: ExtensionsType;
-}
 
-// track & session(fit) & Activity(tcx)
-export interface SportTrackType {
-  name?: string;
-
-  // ==========GPX 1.1=============
-  GPX_cmt?: string;
-  GPX_desc?: string;
-  GPX_src?: string;
-  GPX_link?: string;
-  GPX_number?: number;
-  GPX_type?: string;
-
-  // Sport type
-  sport?: string;
-  trackseg?: SportRouteSegType[];
-  extensions?: ExtensionsType;
-  startTime?: number;
-  startLat?: LatitudeType;
-  startLon?: LongitudeType;
-  duration?: number;
-  distance?: number;
-  endTime?: number;
-  endLat?: LatitudeType;
-  endLon?: LongitudeType;
-  __fit__sessionMesgType?: SessionMesgType;
+  /**
+   * 记录描述
+   */
+  description?: number;
 }
 
 /**
  * Segments & fit(lap) & tcx(lap)
  */
-export interface SportRouteSegType {
+export interface ActivityLapType {
+  /**
+   * 活动索引
+   */
+  index: number;
+  /**
+   * 活动名称
+   */
   name?: string;
-  sport?: string;
+  /**
+   * 活动类型
+   */
+  sport_type?: string;
+  /**
+   * 活动描述
+   */
+  description?: string;
+  /**
+   * 活动时间戳
+   */
+  timestamp?: number;
+  /**
+   * 开始时间(时间戳)
+   */
+  start_time?: number;
+  /**
+   * 结束时间(时间戳)
+   */
+  end_time?: number;
+  /**
+   * 开始纬度
+   */
+  start_lat?: LatitudeType;
+  /**
+   * 开始经度
+   */
+  start_lon?: LongitudeType;
+  /**
+   * 结束纬度
+   */
+  end_lat?: LatitudeType;
+  /**
+   * 结束经度
+   */
+  end_lon?: LongitudeType;
+  /**
+   * 总计时时间（不包括暂停时间）
+   */
+  total_timer_time?: number;
+  /**
+   * 总经过时间（包括暂停时间）
+   */
+  total_elapsed_time?: number;
+  /**
+   * 总距离
+   */
+  total_distance?: number;
+  /**
+   * 总上升高度
+   */
+  total_ascent?: number;
+  /**
+   * 总下降高度
+   */
+  total_descent?: number;
 
-  // ==========GPX 1.1=============
-  GPX_cmt?: string;
-  GPX_desc?: string;
-  GPX_src?: string;
-  GPX_link?: string;
-  GPX_number?: number;
-  GPX_type?: string;
+  /**
+   * 总周期数（如踏频、划桨次数等）
+   */
+  total_cycles?: number;
+  /**
+   * 总功（焦耳）
+   */
+  total_work?: number;
+  /**
+   * 总划桨/踏步次数
+   */
+  total_strokes?: number;
+  /**
+   * 平均速度（m/s）
+   */
+  avg_speed?: number;
+  /**
+   * 最大速度（m/s）
+   */
+  max_speed?: number;
+  /**
+   * 平均功率（W）
+   */
+  avg_power?: number;
+  /**
+   * 最大功率（W）
+   */
+  max_power?: number;
+  /**
+   * 标准化功率
+   */
+  normalized_power?: number;
+  /**
+   * 阈值功率（W）
+   */
+  threshold_power?: number;
+  /**
+   * 平均踏频（次/分）
+   */
+  avg_cadence?: number;
+  /**
+   * 最大踏频（次/分）
+   */
+  max_cadence?: number;
+  /**
+   * 平均心率
+   */
+  avg_heart_rate?: number;
+  /**
+   * 平均心率
+   */
+  max_heart_rate?: number;
+  /**
+   * 训练压力评分
+   */
+  TTS?: number;
+  /**
+   * 强度因子
+   */
+  IF?: number;
+  /**
+   * 总消耗卡路里
+   */
+  total_calories?: number;
+  /**
+   * 总脂肪消耗卡路里
+   */
+  total_fat_calories?: number;
+  /**
+   * 记录点
+   */
+  records?: ActivityRecordType[];
 
-  extensions?: ExtensionsType[];
-  points?: SportPointType[];
   /**
-   * Duration mapping tcx:Lap:TotalTimeSeconds
+   * Active (high intensity)
+   * Resting (low intensity)
    */
-  duration?: number;
-  /**
-   * Exercise distance
-   */
-  distance?: number;
-  /**
-   * Start time
-   */
-  startTime?: number;
-  /**
-   * End time
-   */
-  endTime?: number;
-  /**
-   * Average heart rate per minute
-   */
-  avgHeartRateBpm?: number;
-  /**
-   * Maximum heart rate per minute
-   */
-  maxHeartRateBpm?: number;
-  /**
-   * Average speed m/s
-   */
-  avgSpeed?: number;
-  /**
-   * Maximum speed m/s
-   */
-  maxSpeed?: number;
-  /**
-   * Average cadence per minute
-   */
-  avgCadenceBpm?: number;
-  /**
-   * Maximum cadence per minute
-   */
-  maxCadenceBpm?: number;
-  /**
-   * Average power
-   */
-  avgPower?: number;
-  /**
-   * Maximum power
-   */
-  maxPower?: number;
-  /**
-   * Average temperature
-   */
-  avgTemperature?: number;
-  /**
-   * Maximum temperature
-   */
-  maxTemperature?: number;
-  /**
-   * Average altitude
-   */
-  avgAltitude?: number;
-  /**
-   * Maximum altitude
-   */
-  maxEnhancedAltitude?: number;
-  /**
-   * Ascent
-   */
-  totalAscent?: number;
-  /**
-   * Descent
-   */
-  totalDescent?: number;
-  /**
-   * Calories
-   */
-  calories?: number;
-  // Below are tcx exclusive fields, all data from tcx
-  __tcx__Intensity?: IntensityType;
-  __tcx__TriggerMethod?: TriggerMethodType;
-  __tcx__Notes?: string;
-  __tcx__Extensions?: any;
-
-  __fit__lapMesgType?: LapMesgType;
+  intensity?: IntensityType;
 }

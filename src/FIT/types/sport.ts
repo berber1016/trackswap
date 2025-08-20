@@ -1,4 +1,4 @@
-export enum Sport {
+export enum Activity {
   GENERIC = 0, // 通用
   RUNNING = 1, // 跑步
   CYCLING = 2, // 骑行

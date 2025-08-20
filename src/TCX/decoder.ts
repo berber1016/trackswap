@@ -7,7 +7,7 @@ import {
   ActivityLapConverter,
   ActivityConverter,
   ActivityListConverter,
-  MultiSportSessionConverter,
+  MultiActivitySessionConverter,
   AbstractSourceConverter,
   ExtensionsConverter,
 } from "./converters.js";
@@ -66,7 +66,7 @@ export class TCXDecoder {
       new ActivityLapConverter(),
       new ActivityConverter(),
       new ActivityListConverter(),
-      new MultiSportSessionConverter(),
+      new MultiActivitySessionConverter(),
       new AbstractSourceConverter(),
       new ExtensionsConverter(),
     ];

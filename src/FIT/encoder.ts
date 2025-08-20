@@ -24,9 +24,9 @@ export interface FITEncoderOptions {
   /** Whether to enable compact mode */
   compact?: boolean;
   /** Default sport type */
-  defaultSport?: string;
+  defaultActivity?: string;
   /** Default sub sport type */
-  defaultSubSport?: string;
+  defaultSubActivity?: string;
 }
 
 /**
@@ -45,8 +45,8 @@ export class FITEncoder {
   constructor(options: FITEncoderOptions = {}) {
     this.options = {
       compact: options.compact ?? true,
-      defaultSport: options.defaultSport ?? "cycling",
-      defaultSubSport: options.defaultSubSport ?? "generic",
+      defaultActivity: options.defaultActivity ?? "cycling",
+      defaultSubActivity: options.defaultSubActivity ?? "generic",
     };
   }
 
@@ -177,7 +177,7 @@ export class FITEncoder {
     // Write course information
     this.buildCourse({
       name: "course",
-      sport: this.options.defaultSport,
+      sport: this.options.defaultActivity,
     });
 
     // Build events and records
@@ -275,8 +275,8 @@ export class FITEncoder {
       total_distance: session.totalDistance,
       total_ascent: session.totalAscent,
       total_descent: session.totalDescent,
-      sport: session.sport || this.options.defaultSport,
-      sub_sport: session.subSport || this.options.defaultSubSport,
+      sport: session.sport || this.options.defaultActivity,
+      sub_sport: session.subActivity || this.options.defaultSubActivity,
       first_lap_index: session.firstLapIndex || 0,
       num_laps: session.numLaps || session.lapMesgs?.length || 1,
     });
@@ -423,7 +423,7 @@ export class FITEncoder {
       timestamp: session.timestamp,
       totalTimerTime: session.totalTimerTime,
       numSessions: 1,
-      type: session.sport || this.options.defaultSport,
+      type: session.sport || this.options.defaultActivity,
       event: "activity",
       eventType: "stop",
       eventGroup: 0,

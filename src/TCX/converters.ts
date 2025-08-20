@@ -8,7 +8,7 @@ import {
   TrackpointType,
   PositionType,
   ActivityListType,
-  MultiSportSessionType,
+  MultiActivitySessionType,
   AbstractSourceType,
   HistoryType,
   FolderType,
@@ -20,8 +20,8 @@ import {
   IntensityType,
   TriggerMethodType,
   CadenceType,
-  FirstSportType,
-  NextSportType,
+  FirstActivityType,
+  NextActivityType,
   HistoryFolderType,
   ActivityRefType,
   WeekType,
@@ -204,7 +204,7 @@ export class ActivityConverter extends BaseTCXConverter {
 
     // Extract attributes
     this.extractAttributes(ast, activity, {
-      Sport: "Sport" as any,
+      Activity: "Activity" as any,
     });
 
     this.processChildren(ast, activity, {
@@ -269,7 +269,7 @@ export class ActivityListConverter extends BaseTCXConverter {
   convert(ast: TokenAST, context: TCXContext): ActivityListType | undefined {
     const activities: ActivityListType = {
       Activity: [],
-      MultiSportSession: [],
+      MultiActivitySession: [],
     };
 
     this.processChildren(ast, activities, {
@@ -282,13 +282,13 @@ export class ActivityListConverter extends BaseTCXConverter {
           target.Activity.push(activity);
         }
       },
-      MultiSportSession: (child, target) => {
+      MultiActivitySession: (child, target) => {
         const decoder = context.metadata.get("decoder");
         const session = decoder
-          ?.getConverter("MultiSportSession")
+          ?.getConverter("MultiActivitySession")
           ?.convert(child, context);
-        if (session && target.MultiSportSession) {
-          target.MultiSportSession.push(session);
+        if (session && target.MultiActivitySession) {
+          target.MultiActivitySession.push(session);
         }
       },
     });
@@ -300,31 +300,31 @@ export class ActivityListConverter extends BaseTCXConverter {
 /**
  * Multi-sport session converter
  */
-export class MultiSportSessionConverter extends BaseTCXConverter {
-  name = "MultiSportSessionConverter";
-  supportedTags = ["MultiSportSession"];
+export class MultiActivitySessionConverter extends BaseTCXConverter {
+  name = "MultiActivitySessionConverter";
+  supportedTags = ["MultiActivitySession"];
 
   convert(
     ast: TokenAST,
     context: TCXContext
-  ): MultiSportSessionType | undefined {
-    const session: MultiSportSessionType = {};
+  ): MultiActivitySessionType | undefined {
+    const session: MultiActivitySessionType = {};
 
     this.processChildren(ast, session, {
       Id: (child, target) => (target.Id = this.parseString(child.value)),
-      FirstSport: (child, target) => {
+      FirstActivity: (child, target) => {
         const decoder = context.metadata.get("decoder");
-        target.FirstSport = decoder
-          ?.getConverter("FirstSport")
+        target.FirstActivity = decoder
+          ?.getConverter("FirstActivity")
           ?.convert(child, context);
       },
-      NextSport: (child, target) => {
-        if (!target.NextSport) target.NextSport = [];
+      NextActivity: (child, target) => {
+        if (!target.NextActivity) target.NextActivity = [];
         const decoder = context.metadata.get("decoder");
-        const nextSport = decoder
-          ?.getConverter("NextSport")
+        const nextActivity = decoder
+          ?.getConverter("NextActivity")
           ?.convert(child, context);
-        if (nextSport) target.NextSport.push(nextSport);
+        if (nextActivity) target.NextActivity.push(nextActivity);
       },
       Notes: (child, target) => (target.Notes = this.parseString(child.value)),
     });

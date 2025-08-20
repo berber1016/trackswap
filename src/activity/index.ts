@@ -11,30 +11,30 @@ export * from "./encoders.js";
 export * from "./processor.js";
 
 import {
-  GPXToSportConverter,
-  FITToSportConverter,
-  TCXToSportConverter,
+  GPXToActivityConverter,
+  FITToActivityConverter,
+  TCXToActivityConverter,
 } from "./converters.js";
 
 import {
-  SportToGPXEncoder,
-  SportToFITEncoder,
-  SportToTCXEncoder,
+  ActivityToGPXEncoder,
+  ActivityToFITEncoder,
+  ActivityToTCXEncoder,
 } from "./encoders.js";
 
-import { SportProcessor } from "./processor.js";
+import { ActivityProcessor } from "./processor.js";
 
 export default {
   // Converters
-  GPXToSportConverter,
-  FITToSportConverter,
-  TCXToSportConverter,
+  GPXToActivityConverter,
+  FITToActivityConverter,
+  TCXToActivityConverter,
 
   // Encoders
-  SportToGPXEncoder,
-  SportToFITEncoder,
-  SportToTCXEncoder,
+  ActivityToGPXEncoder,
+  ActivityToFITEncoder,
+  ActivityToTCXEncoder,
 
   // Processors
-  SportProcessor,
+  ActivityProcessor,
 };

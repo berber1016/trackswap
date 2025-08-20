@@ -8,9 +8,9 @@ import {
   TrackType,
   TrackpointType,
   PositionType,
-  MultiSportSessionType,
-  FirstSportType,
-  NextSportType,
+  MultiActivitySessionType,
+  FirstActivityType,
+  NextActivityType,
   AbstractSourceType,
   FolderType,
   HistoryType,
@@ -194,11 +194,11 @@ export class TCXEncoder {
       parts.push(`<Other>${this.buildHistoryFolder(history.Other)}</Other>`);
     }
 
-    if (history.MultiSport) {
+    if (history.MultiActivity) {
       parts.push(
-        `<MultiSport>${this.buildHistoryFolder(
-          history.MultiSport
-        )}</MultiSport>`
+        `<MultiActivity>${this.buildHistoryFolder(
+          history.MultiActivity
+        )}</MultiActivity>`
       );
     }
 
@@ -230,9 +230,9 @@ export class TCXEncoder {
       });
     }
 
-    if (activities.MultiSportSession) {
-      activities.MultiSportSession.forEach((session) => {
-        parts.push(this.buildMultiSportSession(session));
+    if (activities.MultiActivitySession) {
+      activities.MultiActivitySession.forEach((session) => {
+        parts.push(this.buildMultiActivitySession(session));
       });
     }
 
@@ -244,8 +244,8 @@ export class TCXEncoder {
    * Build single Activity element
    */
   private buildActivity(activity: ActivityType): string {
-    const sport = activity.Sport || "Other";
-    const parts: string[] = [`<Activity Sport="${sport}">`];
+    const sport = activity.Activity || "Other";
+    const parts: string[] = [`<Activity Activity="${sport}">`];
 
     // ID is required
     parts.push(`<Id>${this.formatTime(activity.Id)}</Id>`);
@@ -434,65 +434,65 @@ export class TCXEncoder {
   }
 
   /**
-   * Build MultiSportSession element
+   * Build MultiActivitySession element
    */
-  private buildMultiSportSession(session: MultiSportSessionType): string {
-    const parts: string[] = ["<MultiSportSession>"];
+  private buildMultiActivitySession(session: MultiActivitySessionType): string {
+    const parts: string[] = ["<MultiActivitySession>"];
 
     if (session.Id) {
       parts.push(`<Id>${this.formatTime(session.Id)}</Id>`);
     }
 
-    if (session.FirstSport) {
-      parts.push(this.buildFirstSport(session.FirstSport));
+    if (session.FirstActivity) {
+      parts.push(this.buildFirstActivity(session.FirstActivity));
     }
 
-    if (session.NextSport) {
-      session.NextSport.forEach((nextSport) => {
-        parts.push(this.buildNextSport(nextSport));
+    if (session.NextActivity) {
+      session.NextActivity.forEach((nextActivity) => {
+        parts.push(this.buildNextActivity(nextActivity));
       });
     }
 
     this.addOptionalElement(parts, "Notes", session.Notes);
 
-    parts.push("</MultiSportSession>");
+    parts.push("</MultiActivitySession>");
     return parts.join("\n    ");
   }
 
   /**
-   * Build FirstSport element
+   * Build FirstActivity element
    */
-  private buildFirstSport(firstSport: FirstSportType): string {
-    const parts: string[] = ["<FirstSport>"];
+  private buildFirstActivity(firstActivity: FirstActivityType): string {
+    const parts: string[] = ["<FirstActivity>"];
 
-    if (firstSport.Activity) {
-      parts.push(this.buildActivity(firstSport.Activity));
+    if (firstActivity.Activity) {
+      parts.push(this.buildActivity(firstActivity.Activity));
     }
 
-    parts.push("</FirstSport>");
+    parts.push("</FirstActivity>");
     return parts.join("\n      ");
   }
 
   /**
-   * Build NextSport element
+   * Build NextActivity element
    */
-  private buildNextSport(nextSport: NextSportType): string {
-    const parts: string[] = ["<NextSport>"];
+  private buildNextActivity(nextActivity: NextActivityType): string {
+    const parts: string[] = ["<NextActivity>"];
 
-    if (nextSport.Transition) {
+    if (nextActivity.Transition) {
       // Transition uses ActivityLap structure
       parts.push(
         `<Transition>${this.buildActivityLap(
-          nextSport.Transition
+          nextActivity.Transition
         )}</Transition>`
       );
     }
 
-    if (nextSport.Activity) {
-      parts.push(this.buildActivity(nextSport.Activity));
+    if (nextActivity.Activity) {
+      parts.push(this.buildActivity(nextActivity.Activity));
     }
 
-    parts.push("</NextSport>");
+    parts.push("</NextActivity>");
     return parts.join("\n      ");
   }
 

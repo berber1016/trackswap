@@ -1,31 +1,31 @@
 import {
-  SportContext,
-  SportEncodingContext,
-  ISportConverterPlugin,
-  ISportEncoderPlugin,
+  ActivityContext,
+  ActivityEncodingContext,
+  IActivityConverterPlugin,
+  IActivityEncoderPlugin,
 } from "./base.js";
-import { SportFileType } from "../types.js";
+import { FileType } from "../types.js";
 import { GPX11Type } from "../GPX/types.js";
 import { FITFileType } from "../FIT/types.js";
 import { TCXFileType } from "../TCX/types.js";
 import {
-  GPXToSportConverter,
-  FITToSportConverter,
-  TCXToSportConverter,
+  GPXToActivityConverter,
+  FITToActivityConverter,
+  TCXToActivityConverter,
 } from "./converters.js";
 import {
-  SportToGPXEncoder,
-  SportToFITEncoder,
-  SportToTCXEncoder,
+  ActivityToGPXEncoder,
+  ActivityToFITEncoder,
+  ActivityToTCXEncoder,
 } from "./encoders.js";
 
 /**
- * Sport processor
+ * Activity processor
  * Responsible for managing conversion and encoding processes
  */
-export class SportProcessor {
-  private converters: Map<string, ISportConverterPlugin> = new Map();
-  private encoders: Map<string, ISportEncoderPlugin> = new Map();
+export class ActivityProcessor {
+  private converters: Map<string, IActivityConverterPlugin> = new Map();
+  private encoders: Map<string, IActivityEncoderPlugin> = new Map();
 
   constructor() {
     this.registerDefaultConverters();
@@ -36,42 +36,42 @@ export class SportProcessor {
    * Register default converters
    */
   private registerDefaultConverters(): void {
-    this.registerConverter(new GPXToSportConverter());
-    this.registerConverter(new FITToSportConverter());
-    this.registerConverter(new TCXToSportConverter());
+    this.registerConverter(new GPXToActivityConverter());
+    this.registerConverter(new FITToActivityConverter());
+    this.registerConverter(new TCXToActivityConverter());
   }
 
   /**
    * Register default encoders
    */
   private registerDefaultEncoders(): void {
-    this.registerEncoder(new SportToGPXEncoder());
-    this.registerEncoder(new SportToFITEncoder());
-    this.registerEncoder(new SportToTCXEncoder());
+    this.registerEncoder(new ActivityToGPXEncoder());
+    this.registerEncoder(new ActivityToFITEncoder());
+    this.registerEncoder(new ActivityToTCXEncoder());
   }
 
   /**
    * Register converter
    */
-  registerConverter(converter: ISportConverterPlugin): void {
+  registerConverter(converter: IActivityConverterPlugin): void {
     this.converters.set(converter.name, converter);
   }
 
   /**
    * Register encoder
    */
-  registerEncoder(encoder: ISportEncoderPlugin): void {
+  registerEncoder(encoder: IActivityEncoderPlugin): void {
     this.encoders.set(encoder.name, encoder);
   }
 
   /**
-   * Convert native format to SportFileType
+   * Convert native format to FileType
    */
-  async convertToSport(
+  async convertToActivity(
     sourceData: GPX11Type | FITFileType | TCXFileType,
     sourceFormat: "gpx" | "fit" | "tcx"
-  ): Promise<SportFileType> {
-    const context: SportContext = {
+  ): Promise<FileType> {
+    const context: ActivityContext = {
       metadata: new Map(),
       errors: [],
       warnings: [],
@@ -96,7 +96,7 @@ export class SportProcessor {
 
       // Execute conversion
       const startTime = Date.now();
-      const result = converter.convert({} as any, context);
+      const result = converter.convert(sourceData as any, context);
       context.performance.convertTime = Date.now() - startTime;
 
       if (!result) {
@@ -115,13 +115,13 @@ export class SportProcessor {
   }
 
   /**
-   * Encode SportFileType to native format
+   * Encode ActivityType to native format
    */
-  async encodeSport(
-    sportData: SportFileType,
+  async encodeActivity(
+    file: FileType,
     targetFormat: "gpx" | "fit" | "tcx"
   ): Promise<GPX11Type | FITFileType | TCXFileType> {
-    const context: SportEncodingContext = {
+    const context: ActivityEncodingContext = {
       metadata: new Map(),
       errors: [],
       warnings: [],
@@ -145,7 +145,7 @@ export class SportProcessor {
 
       // Execute encoding
       const startTime = Date.now();
-      const result = encoder.encode(sportData, context);
+      const result = encoder.encode(file, context);
       context.performance.encodeTime = Date.now() - startTime;
 
       if (!result) {
@@ -168,7 +168,7 @@ export class SportProcessor {
    */
   private findConverter(
     sourceFormat: string
-  ): ISportConverterPlugin | undefined {
+  ): IActivityConverterPlugin | undefined {
     return Array.from(this.converters.values()).find((converter) =>
       converter.supportedTags?.includes(sourceFormat)
     );
@@ -177,7 +177,9 @@ export class SportProcessor {
   /**
    * Find encoder
    */
-  private findEncoder(targetFormat: string): ISportEncoderPlugin | undefined {
+  private findEncoder(
+    targetFormat: string
+  ): IActivityEncoderPlugin | undefined {
     return Array.from(this.encoders.values()).find((encoder) =>
       encoder.supportedTags?.includes(targetFormat)
     );

@@ -140,7 +140,7 @@ export interface SessionMesgType {
   event?: string;
   eventType?: string;
   sport?: string;
-  subSport?: string;
+  subActivity?: string;
   avgCadence?: number;
   maxCadence?: number;
   trigger?: number;

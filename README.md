@@ -69,7 +69,7 @@ const convertedBuffer = await trackSwap.convertFile(
 const parsedData = await trackSwap.parseFile(buffer);
 
 // 🏃‍♂️ 解析并转换为统一的运动数据格式
-const sportData = await trackSwap.parseToSport(buffer);
+const sportData = await trackSwap.parseToActivity(buffer);
 ```
 
 ## 📖 详细使用指南
@@ -136,18 +136,18 @@ const result = await trackSwap.convertFile(sourceBuffer, 'fit', 'gpx');
 // GPX ↔ FIT ↔ TCX (任意格式之间相互转换)
 ```
 
-#### SportFileType 统一格式
+#### ActivityType 统一格式
 
 ```typescript
 // 转换为统一的运动数据格式
-const gpxSport = await trackSwap.convertGPXToSport(gpxData);
-const fitSport = await trackSwap.convertFITToSport(fitData);
-const tcxSport = await trackSwap.convertTCXToSport(tcxData);
+const gpxActivity = await trackSwap.convertGPXToActivity(gpxData);
+const fitActivity = await trackSwap.convertFITToActivity(fitData);
+const tcxActivity = await trackSwap.convertTCXToActivity(tcxData);
 
 // 从统一格式转换回具体格式
-const gpxData = await trackSwap.convertSportToGPX(sportData);
-const fitData = await trackSwap.convertSportToFIT(sportData);
-const tcxData = await trackSwap.convertSportToTCX(sportData);
+const gpxData = await trackSwap.convertActivityToGPX(sportData);
+const fitData = await trackSwap.convertActivityToFIT(sportData);
+const tcxData = await trackSwap.convertActivityToTCX(sportData);
 ```
 
 ### 3. 智能解析
@@ -162,8 +162,8 @@ const parsedData = await trackSwap.parseFile(buffer);
 const parsedData = await trackSwap.parseFile(buffer, 'gpx'); // 指定格式
 
 // 🏃‍♂️ 解析为统一格式
-const sportData = await trackSwap.parseToSport(buffer);
-const sportData = await trackSwap.parseToSport(buffer, 'fit'); // 指定格式
+const sportData = await trackSwap.parseToActivity(buffer);
+const sportData = await trackSwap.parseToActivity(buffer, 'fit'); // 指定格式
 ```
 
 ## 🔧 API 参考
@@ -180,7 +180,7 @@ const sportData = await trackSwap.parseToSport(buffer, 'fit'); // 指定格式
 | `parseTCX(buffer)` | 解析 TCX Buffer | `Buffer` | `Promise<TCXFileType>` |
 | `parseTCXString(xml)` | 解析 TCX 字符串 | `string` | `Promise<TCXFileType>` |
 | `parseFile(buffer, type?)` | 统一解析方法 | `Buffer, string?` | `Promise<GPX11Type \| FITFileType \| TCXFileType>` |
-| `parseToSport(buffer, type?)` | 解析为统一格式 | `Buffer, string?` | `Promise<SportFileType>` |
+| `parseToActivity(buffer, type?)` | 解析为统一格式 | `Buffer, string?` | `Promise<ActivityType>` |
 
 #### 编码方法
 
@@ -198,19 +198,19 @@ const sportData = await trackSwap.parseToSport(buffer, 'fit'); // 指定格式
 | 方法 | 说明 | 参数 | 返回值 |
 |------|------|------|--------|
 | `convertFile(buffer, target, source?)` | 统一转换方法 | `Buffer, string, string?` | `Promise<Buffer>` |
-| `convertGPXToSport(data)` | GPX → Sport | `GPX11Type` | `Promise<SportFileType>` |
-| `convertFITToSport(data)` | FIT → Sport | `FITFileType` | `Promise<SportFileType>` |
-| `convertTCXToSport(data)` | TCX → Sport | `TCXFileType` | `Promise<SportFileType>` |
-| `convertSportToGPX(data)` | Sport → GPX | `SportFileType` | `Promise<GPX11Type>` |
-| `convertSportToFIT(data)` | Sport → FIT | `SportFileType` | `Promise<FITFileType>` |
-| `convertSportToTCX(data)` | Sport → TCX | `SportFileType` | `Promise<TCXFileType>` |
+| `convertGPXToActivity(data)` | GPX → Activity | `GPX11Type` | `Promise<ActivityType>` |
+| `convertFITToActivity(data)` | FIT → Activity | `FITFileType` | `Promise<ActivityType>` |
+| `convertTCXToActivity(data)` | TCX → Activity | `TCXFileType` | `Promise<ActivityType>` |
+| `convertActivityToGPX(data)` | Activity → GPX | `ActivityType` | `Promise<GPX11Type>` |
+| `convertActivityToFIT(data)` | Activity → FIT | `ActivityType` | `Promise<FITFileType>` |
+| `convertActivityToTCX(data)` | Activity → TCX | `ActivityType` | `Promise<TCXFileType>` |
 
 #### 工具方法
 
 | 方法 | 说明 | 参数 | 返回值 |
 |------|------|------|--------|
 | `detectFormat(buffer)` | 检测文件格式 | `Buffer` | `'gpx' \| 'fit' \| 'tcx' \| 'unknown'` |
-| `getSportProcessor()` | 获取运动处理器 | - | `SportProcessor` |
+| `getActivityProcessor()` | 获取运动处理器 | - | `ActivityProcessor` |
 | `destroy()` | 清理资源 | - | `Promise<void>` |
 
 ## 🌟 实际应用示例
@@ -262,7 +262,7 @@ async function analyzeTrack(buffer: Buffer) {
   console.log(`文件格式: ${format}`);
   
   // 📊 转换为统一格式进行分析
-  const sportData = await trackSwap.parseToSport(buffer);
+  const sportData = await trackSwap.parseToActivity(buffer);
   
   // 分析数据
   const analysis = {
@@ -285,27 +285,27 @@ async function analyzeTrack(buffer: Buffer) {
 ```typescript
 async function mergeMultiFormatTracks(files: { buffer: Buffer, name: string }[]) {
   const trackSwap = new TrackSwap();
-  const allSportData: SportFileType[] = [];
+  const allActivityData: ActivityType[] = [];
   
   // 🔄 将所有格式转换为统一格式
   for (const file of files) {
     try {
-      const sportData = await trackSwap.parseToSport(file.buffer);
+      const sportData = await trackSwap.parseToActivity(file.buffer);
       sportData.metadata = { ...sportData.metadata, originalFile: file.name };
-      allSportData.push(sportData);
+      allActivityData.push(sportData);
     } catch (error) {
       console.error(`解析失败: ${file.name}`, error);
     }
   }
   
   // 融合数据逻辑
-  const mergedData = mergeSportData(allSportData);
+  const mergedData = mergeActivityData(allActivityData);
   
   // 输出为不同格式
   const results = {
-    gpx: await trackSwap.convertSportToGPX(mergedData),
-    fit: await trackSwap.convertSportToFIT(mergedData),
-    tcx: await trackSwap.convertSportToTCX(mergedData)
+    gpx: await trackSwap.convertActivityToGPX(mergedData),
+    fit: await trackSwap.convertActivityToFIT(mergedData),
+    tcx: await trackSwap.convertActivityToTCX(mergedData)
   };
   
   await trackSwap.destroy();
@@ -327,17 +327,17 @@ TrackSwap 采用模块化架构，核心组件包括：
 │  │ • GPXDecoder/Encoder - GPX 文件处理                     │ │
 │  │ • FITDecoder/Encoder - FIT 文件处理                     │ │
 │  │ • TCXDecoder/Encoder - TCX 文件处理                     │ │
-│  │ • SportProcessor - 统一格式转换处理                      │ │
+│  │ • ActivityProcessor - 统一格式转换处理                      │ │
 │  └─────────────────────────────────────────────────────────┘ │
 │                                                             │
 │  🔄 转换引擎                                                │
 │  ┌─────────────────────────────────────────────────────────┐ │
-│  │ • GPXToSportConverter - GPX → SportFileType            │ │
-│  │ • FITToSportConverter - FIT → SportFileType            │ │
-│  │ • TCXToSportConverter - TCX → SportFileType            │ │
-│  │ • SportToGPXEncoder - SportFileType → GPX              │ │
-│  │ • SportToFITEncoder - SportFileType → FIT              │ │
-│  │ • SportToTCXEncoder - SportFileType → TCX              │ │
+│  │ • GPXToActivityConverter - GPX → ActivityType            │ │
+│  │ • FITToActivityConverter - FIT → ActivityType            │ │
+│  │ • TCXToActivityConverter - TCX → ActivityType            │ │
+│  │ • ActivityToGPXEncoder - ActivityType → GPX              │ │
+│  │ • ActivityToFITEncoder - ActivityType → FIT              │ │
+│  │ • ActivityToTCXEncoder - ActivityType → TCX              │ │
 │  └─────────────────────────────────────────────────────────┘ │
 │                                                             │
 │  🎯 统一接口                                                │

@@ -5,13 +5,7 @@ import { FITFileType } from "./FIT/types.js";
 import { TCXDecoder, TCXEncoder } from "./TCX/index.js";
 import { TCXFileType } from "./TCX/types.js";
 import { ActivityProcessor } from "./activity/processor.js";
-import { FileType } from "./types.js";
-import {
-  ExtensionManager,
-  TrackSwapExtension,
-  BaseMetricsExtension,
-} from "./activity/extensions/extensions.js";
-
+import { ActivityRecordType, FileType } from "./types.js";
 /**
  * Multi-format track exchange processing class
  * Provides parsing and encoding functionality for GPX, FIT, TCX files
@@ -24,7 +18,6 @@ export class TrackSwap {
   private tcxDecoder: TCXDecoder;
   private tcxEncoder: TCXEncoder;
   private activityProcessor: ActivityProcessor;
-  private extensionManager: ExtensionManager;
 
   constructor() {
     this.gpxDecoder = new GPXDecoder();
@@ -34,7 +27,6 @@ export class TrackSwap {
     this.tcxDecoder = new TCXDecoder();
     this.tcxEncoder = new TCXEncoder();
     this.activityProcessor = new ActivityProcessor();
-    this.extensionManager = new ExtensionManager();
 
     // 基础指标聚合已在 ExtensionManager 构造函数中默认注册
   }
@@ -90,7 +82,7 @@ export class TrackSwap {
   /**
    * Parse FIT file Buffer to FIT object
    */
-  async parseFIT(buffer: Buffer): Promise<FITFileType> {
+  async parseFIT(buffer: Buffer): Promise<FITFileType | undefined> {
     try {
       return await this.fitDecoder.parseByBuffer(buffer);
     } catch (error) {
@@ -244,7 +236,7 @@ export class TrackSwap {
       // If source format is not provided, auto-detect
       const detectedSourceType = sourceType || this.detectFormat(sourceFile);
 
-      if (detectedSourceType === "unknown") {
+      if (detectedSourceType === "unknown" || detectedSourceType == undefined) {
         throw new Error(
           "Unable to recognize source file format, please specify sourceType parameter"
         );
@@ -256,7 +248,7 @@ export class TrackSwap {
       }
 
       // 1. Parse source file
-      let sourceData: GPX11Type | FITFileType | TCXFileType;
+      let sourceData: GPX11Type | FITFileType | TCXFileType | undefined;
       switch (detectedSourceType) {
         case "gpx":
           const gpxResult = await this.parseGPX(sourceFile);
@@ -267,6 +259,7 @@ export class TrackSwap {
           break;
         case "fit":
           sourceData = await this.parseFIT(sourceFile);
+          console.log("Parsed FIT data:", sourceData);
           break;
         case "tcx":
           sourceData = await this.parseTCX(sourceFile);
@@ -284,6 +277,7 @@ export class TrackSwap {
           file = await this.convertGPXToActivity(sourceData as GPX11Type);
           break;
         case "fit":
+          console.log("Converting FIT to Activity:", sourceData);
           file = await this.convertFITToActivity(sourceData as FITFileType);
           break;
         case "tcx":
@@ -364,7 +358,7 @@ export class TrackSwap {
   async parseFile(
     buffer: Buffer,
     sourceType?: "gpx" | "fit" | "tcx"
-  ): Promise<GPX11Type | FITFileType | TCXFileType> {
+  ): Promise<GPX11Type | FITFileType | TCXFileType | undefined> {
     const detectedSourceType = sourceType || this.detectFormat(buffer);
 
     if (detectedSourceType === "unknown") {
@@ -398,7 +392,7 @@ export class TrackSwap {
   async parseToActivity(
     buffer: Buffer,
     sourceType?: "gpx" | "fit" | "tcx"
-  ): Promise<FileType> {
+  ): Promise<FileType | undefined> {
     const detectedSourceType = sourceType || this.detectFormat(buffer);
 
     if (detectedSourceType === "unknown") {
@@ -406,23 +400,30 @@ export class TrackSwap {
         "Unable to recognize file format, please specify sourceType parameter"
       );
     }
-
+    let result: FileType | undefined = undefined;
     switch (detectedSourceType) {
       case "gpx":
         const gpxData = await this.parseGPX(buffer);
         if (!gpxData) {
           throw new Error("GPX parsing failed");
         }
-        return this.convertGPXToActivity(gpxData);
+        result = await this.convertGPXToActivity(gpxData);
+        break;
       case "fit":
         const fitData = await this.parseFIT(buffer);
-        return this.convertFITToActivity(fitData);
+        if (fitData) {
+          result = await this.convertFITToActivity(fitData);
+        }
+        break;
       case "tcx":
         const tcxData = await this.parseTCX(buffer);
-        return this.convertTCXToActivity(tcxData);
+        result = await this.convertTCXToActivity(tcxData);
+        break;
       default:
         throw new Error(`Unsupported file format: ${detectedSourceType}`);
     }
+
+    return result;
   }
 
   /**
@@ -475,41 +476,6 @@ export class TrackSwap {
   getTCXEncoder(): TCXEncoder {
     return this.tcxEncoder;
   }
-
-  // ==================== Extension Functions ====================
-
-  /**
-   * 扩展 TrackSwap 功能
-   * @param extension 要添加的扩展
-   */
-  extend(extension: TrackSwapExtension): TrackSwap {
-    this.extensionManager.registerExtension(extension);
-    return this;
-  }
-
-  /**
-   * 移除扩展
-   * @param extensionName 扩展名称
-   */
-  removeExtension(extensionName: string): TrackSwap {
-    this.extensionManager.unregisterExtension(extensionName);
-    return this;
-  }
-
-  /**
-   * 获取已注册的扩展列表
-   */
-  getExtensions(): TrackSwapExtension[] {
-    return this.extensionManager.getAllExtensions();
-  }
-
-  /**
-   * 使用扩展处理活动数据
-   */
-  processWithExtensions(file: FileType): FileType {
-    return this.extensionManager.processFile(file);
-  }
-
   /**
    * Destroy instance, clean up resources
    */

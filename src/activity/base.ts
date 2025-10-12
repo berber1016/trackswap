@@ -124,53 +124,6 @@ export abstract class BaseActivityConverter
     const dayjsTime = dayjs(time);
     return dayjsTime.isValid() ? dayjsTime.valueOf() : undefined;
   }
-
-  /**
-   * Calculate distance statistics
-   */
-  protected calculateDistance(
-    points: ActivityRecordType[]
-  ): number | undefined {
-    if (points.length < 2) return undefined;
-
-    let totalDistance = 0;
-    for (let i = 1; i < points.length; i++) {
-      const prev = points[i - 1];
-      const curr = points[i];
-
-      // Use Haversine formula for distance calculation (simplified version)
-      const R = 6371e3; // Earth radius (meters)
-      const φ1 = (prev.lat * Math.PI) / 180;
-      const φ2 = (curr.lat * Math.PI) / 180;
-      const Δφ = ((curr.lat - prev.lat) * Math.PI) / 180;
-      const Δλ = ((curr.lon - prev.lon) * Math.PI) / 180;
-
-      const a =
-        Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-        Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-      totalDistance += R * c;
-    }
-
-    return totalDistance;
-  }
-
-  /**
-   * Calculate duration
-   */
-  protected calculateDuration(
-    points: ActivityRecordType[]
-  ): number | undefined {
-    if (points.length < 2) return undefined;
-
-    const firstTime = points[0]?.timestamp;
-    const lastTime = points[points.length - 1]?.timestamp;
-
-    if (!firstTime || !lastTime) return undefined;
-
-    return Math.round((lastTime - firstTime) / 1000); // seconds
-  }
 }
 
 /**
@@ -280,12 +233,12 @@ export abstract class BaseActivityMiddleware
 
   protected validatePoint(point: ActivityRecordType): boolean {
     return !!(
-      point.lat &&
-      point.lon &&
-      point.lat >= -90 &&
-      point.lat <= 90 &&
-      point.lon >= -180 &&
-      point.lon <= 180
+      point.positionLat &&
+      point.positionLong &&
+      point.positionLat >= -90 &&
+      point.positionLat <= 90 &&
+      point.positionLong >= -180 &&
+      point.positionLong <= 180
     );
   }
 }

@@ -3,8 +3,6 @@ import { BaseFITStructurePlugin } from "./base.js";
 import {
   FITDecoderMesgs,
   FITFileType,
-  SessionMesgType,
-  LapMesgType,
   FITContext,
 } from "./types.js";
 
@@ -29,13 +27,14 @@ export class SessionStructurePlugin extends BaseFITStructurePlugin {
     // Associate each Session's Laps and Records
     const sessionStructureMesgs = sessionMesgs.map((session) => {
       const sessionStartTime = dayjs(session.startTime).valueOf();
-      const sessionEndTime = dayjs(session.timestamp).valueOf();
+      const sessionEndTime =
+        sessionStartTime + session.totalElapsedTime! * 1000;
 
       // Find Laps that belong to current Session
       const sessionLaps =
         lapMesgs?.filter((lap) => {
           const lapStartTime = dayjs(lap.startTime).valueOf();
-          const lapEndTime = dayjs(lap.timestamp).valueOf();
+          const lapEndTime = lapStartTime + (lap.totalElapsedTime ?? 0) * 1000;
           return (
             lapStartTime >= sessionStartTime && lapEndTime <= sessionEndTime
           );
@@ -44,19 +43,28 @@ export class SessionStructurePlugin extends BaseFITStructurePlugin {
       // Find corresponding Records for each Lap
       const lapsWithRecords = sessionLaps.map((lap) => {
         const lapStartTime = dayjs(lap.startTime).valueOf();
-        const lapEndTime = dayjs(lap.timestamp).valueOf();
+        const lapEndTime = lapStartTime + (lap.totalElapsedTime ?? 0) * 1000;
 
         const lapRecords =
           recordMesgs?.filter((record) => {
             const recordTime = dayjs(record.timestamp).valueOf();
-            return recordTime >= lapStartTime && recordTime <= lapEndTime;
+            return recordTime >= lapStartTime && recordTime < lapEndTime;
           }) || [];
 
-        return { ...lap, recordMesgs: lapRecords };
+        return {
+          ...lap,
+          recordMesgs: lapRecords,
+          messageIndex: lap.messageIndex !== undefined ? lap.messageIndex : 0, // Ensure messageIndex is a number
+        };
       });
 
       // Return reorganized Session
-      return { ...session, lapMesgs: lapsWithRecords };
+      return {
+        ...session,
+        lapMesgs: lapsWithRecords,
+        messageIndex:
+          session.messageIndex !== undefined ? session.messageIndex : 0, // Ensure messageIndex is a number
+      };
     });
 
     return {

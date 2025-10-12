@@ -44,7 +44,7 @@ export class ParseProcessor implements IFITPipelineProcessor {
       // Parse binary data using FIT SDK
       const rawMessages = await this.parseWithFitSDK(context.rawData);
       context.rawMessages = rawMessages;
-
+      console.log("🎉 FIT parsing raw messages:", rawMessages);
       context.performance.parseTime = Date.now() - startTime;
       console.log(
         `🔧 FIT parsing completed, contains message types: ${Object.keys(

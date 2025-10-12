@@ -7,7 +7,6 @@ import {
   LapMesgType,
   RecordMesgType,
   EventMesgType,
-  FileIdMesgType,
   ActivityMesgType,
 } from "./types.js";
 import dayjs from "dayjs";
@@ -206,15 +205,14 @@ export class FITEncoder {
       const endRecord = allRecords[allRecords.length - 1];
 
       // Start event
-      if (startRecord.timestamp) {
+      if (session.startTime) {
         this.buildEvent({
-          timestamp: startRecord.timestamp,
+          timestamp: session.startTime,
           event: "timer",
           eventType: "start",
           eventGroup: 0,
         });
       }
-
       // Write all records
       allRecords.forEach((record) => this.buildRecord(record));
 
@@ -229,8 +227,10 @@ export class FITEncoder {
       }
 
       // Write lap
-      if (session.lapMesgs[0]) {
-        this.buildLap(session.lapMesgs[0]);
+      if(session.lapMesgs) {
+          for(let i = 0; i < session.lapMesgs.length; i++) {
+          this.buildLap(session.lapMesgs[i]);
+        }
       }
     }
   }
@@ -259,14 +259,15 @@ export class FITEncoder {
 
   /**
    * Build Session
+   * 构造 Session 信息
    */
   private buildSession(session: SessionMesgType): void {
     this.writeMesg("session", {
       timestamp: session.timestamp
-        ? this.parseTimestamp(session.timestamp)
+        ? session.timestamp
         : undefined,
       start_time: session.startTime
-        ? this.parseTimestamp(session.startTime)
+        ? session.startTime
         : undefined,
       total_elapsed_time: session.totalElapsedTime,
       total_timer_time: session.totalTimerTime,
@@ -276,7 +277,7 @@ export class FITEncoder {
       total_ascent: session.totalAscent,
       total_descent: session.totalDescent,
       sport: session.sport || this.options.defaultActivity,
-      sub_sport: session.subActivity || this.options.defaultSubActivity,
+      sub_sport: session.subSport || this.options.defaultSubActivity,
       first_lap_index: session.firstLapIndex || 0,
       num_laps: session.numLaps || session.lapMesgs?.length || 1,
     });
@@ -291,12 +292,13 @@ export class FITEncoder {
 
   /**
    * Build single Lap
+   * 构造 Lap 信息
    */
   private buildLap(lap: LapMesgType): void {
     this.writeMesg("lap", {
-      timestamp: lap.timestamp ? this.parseTimestamp(lap.timestamp) : undefined,
+      timestamp: lap.timestamp ? lap.timestamp : undefined,
       start_time: lap.startTime
-        ? this.parseTimestamp(lap.startTime)
+        ? lap.startTime
         : undefined,
       start_position_lat: this.convertToSemicircles(lap.startPositionLat),
       start_position_long: this.convertToSemicircles(lap.startPositionLong),
@@ -323,7 +325,7 @@ export class FITEncoder {
   private buildRecord(record: RecordMesgType): void {
     this.writeMesg("record", {
       timestamp: record.timestamp
-        ? this.parseTimestamp(record.timestamp)
+        ? record.timestamp
         : undefined,
       position_lat: this.convertToSemicircles(record.positionLat),
       position_long: this.convertToSemicircles(record.positionLong),
@@ -342,7 +344,7 @@ export class FITEncoder {
   private buildEvent(event: EventMesgType): void {
     this.writeMesg("event", {
       timestamp: event.timestamp
-        ? this.parseTimestamp(event.timestamp)
+        ? event.timestamp
         : undefined,
       event: event.event,
       event_type: event.eventType,
@@ -356,7 +358,7 @@ export class FITEncoder {
   private buildActivity(activity: ActivityMesgType): void {
     this.writeMesg("activity", {
       timestamp: activity.timestamp
-        ? this.parseTimestamp(activity.timestamp)
+        ? activity.timestamp
         : undefined,
       total_timer_time: activity.totalTimerTime,
       num_sessions: activity.numSessions,

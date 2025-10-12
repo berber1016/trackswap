@@ -365,7 +365,7 @@ export class FITDecoder {
       enableStats?: boolean;
       userData?: Record<string, any>;
     } = {}
-  ): Promise<FITFileType> {
+  ): Promise<FITFileType | undefined> {
     await this.initialize();
 
     let context = this.createContext();
@@ -430,15 +430,14 @@ export class FITDecoder {
           for (const middleware of this.middlewarePlugins) {
             await middleware.onError?.(error as Error, context);
           }
-
           console.error(
             `FIT pipeline stage ${processor.stage} processing failed:`,
             error
           );
         }
       }
-
-      return context.result || ({} as FITFileType);
+      console.log("🎉 FIT parsing completed",context.result);
+      return context.result;
     } catch (error) {
       console.error("FIT parsing failed:", error);
       throw error;

@@ -1,11 +1,13 @@
 import { BaseActivityConverter, ActivityContext } from "./base.js";
 import { FileType, TokenAST } from "../types.js";
 import { ActivityType, ActivityRecordType, ActivityLapType } from "../types.js";
-import { GPX11Type, WptType } from "../GPX/types.js";
-import { FITFileType, RecordMesgType, LapMesgType } from "../FIT/types.js";
-import { TCXFileType, TrackpointType } from "../TCX/types.js";
+import { GPX11Type, TrksegType, TrkType, WptType } from "../GPX/types.js";
+import { FITFileType, RecordMesgType, LapMesgType, SessionMesgType } from "../FIT/types.js";
+import { ActivityType as TCXActivityType, ActivityLapType as TCXActivityLapType, TCXFileType, TrackpointType } from "../TCX/types.js";
 import { semicirclesToDegrees, convertGPXExtensionsMapping } from "../util.js";
 import dayjs from "dayjs";
+import { MetricsAggregator } from "./metrics/MetricsCalculator.js";
+import { Session } from "inspector/promises";
 
 /**
  * Simple mathematical rounding function
@@ -46,42 +48,30 @@ export class GPXToActivityConverter extends BaseActivityConverter {
 
     // Convert tracks
     if (gpx.trk) {
-      obj.activities = gpx.trk.map((track, trackIndex) => ({
-        index: trackIndex,
-        name: track.name,
-        laps:
-          track.trkseg?.map((seg, segIndex) => ({
-            index: segIndex,
-            name: track.name,
-            records: seg.trkpt ? this.convertWpts2Points(seg.trkpt) : [],
-          })) || [],
-      }));
+      obj.activities = gpx.trk.map((trk, index) =>
+        this.convertTrk2Activity(trk, index)
+      );
     }
 
     // Convert routes
     if (gpx.rte) {
-      obj.routes = gpx.rte.map((route, index) => ({
-        index,
-        name: route.name,
-        records: route.rtept ? this.convertWpts2Points(route.rtept) : [],
-      }));
+      obj.routes = gpx.rte.map((rte, idx) => { 
+          return this.convertTrackSeg2Lap(rte, idx)
+       })
     }
-
     return obj;
   }
 
+  /**
+   * 将 Wpt 转为 ActivityRecordType
+   * @param point 
+   * @param idx 
+   * @returns 
+   */
   protected convertPoint(
     point: WptType,
     idx?: number
-  ): ActivityRecordType | undefined {
-    if (
-      point.lat == null ||
-      point.lon == null
-      // || typeof point.lat !== "number"
-      // || typeof point.lon !== "number"
-    ) {
-      return undefined;
-    }
+  ): ActivityRecordType {
 
     const { extensions } = point;
     const gpxExtensions = extensions
@@ -90,18 +80,66 @@ export class GPXToActivityConverter extends BaseActivityConverter {
 
     return {
       index: idx || 0,
-      lat: point.lat,
-      lon: point.lon,
+      positionLat: point.lat,
+      positionLong: point.lon,
       altitude: point.ele,
-      heart_rate: point?.heartRate,
+      heartRate: point?.heartRate,
       speed: point?.speed,
       power: point?.power,
       cadence: point?.cadence,
-      timestamp: this.convertTime(point.time),
+      timestamp: dayjs(point.time).toDate(),
       ...gpxExtensions,
     };
   }
+  /**
+   * 将 trk 转为 Activity
+   * @param trk 
+   * @param idx 
+   * @returns 
+   */
+  private convertTrk2Activity(trk: TrkType, idx: number): ActivityType {
 
+    const laps = trk.trkseg?.map((trkseg, segIdx) =>
+      this.convertTrackSeg2Lap(trkseg, segIdx)
+    ) || [];
+    // 聚合数据
+    const aggregatedData = new MetricsAggregator().calculateLapAggMetrics(laps) as SessionMesgType;
+    return {
+      index: idx,
+      messageIndex: idx,
+      laps: laps,
+      ...aggregatedData,
+    };
+  } 
+  /**
+   * 将 trkseg 转为 lap
+   * @param seg 
+   * @param idx 
+   * @returns 
+   */
+  private convertTrackSeg2Lap(seg: TrksegType, idx: number): ActivityLapType {
+    console.log("Converting trkseg to lap:", seg, seg.trkpt?.[0]);
+    const points = seg.trkpt?.filter(
+            (point: WptType | undefined) => point !== undefined && point.lat && point.lon)?.map((trkpt: WptType, ptIdx: number) =>
+            this.convertPoint(trkpt, ptIdx)
+          )
+      || [];
+
+    const metricsAggregator = new MetricsAggregator();
+    const aggregatedData = metricsAggregator.calculateRecordsAggMetrics(points);
+
+    return {
+      index: idx,
+      messageIndex:idx,
+      ...aggregatedData,
+      records: aggregatedData?.records || [],
+    };
+  }
+  /**
+   * 将 GPX 的 wpt[] 转为 ActivityRecordType 数组
+   * @param wpts 
+   * @returns 
+   */
   private convertWpts2Points(wpts: WptType[]): ActivityRecordType[] {
     const points: ActivityRecordType[] = [];
     for (let i = 0; i < wpts.length; i++) {
@@ -109,10 +147,6 @@ export class GPXToActivityConverter extends BaseActivityConverter {
       if (
         wpt.lat != null &&
         wpt.lon != null
-        //
-        // 增加容错，如果不是 number 类型也能进行转换
-        //  && typeof wpt.lat === "number"
-        // &&  typeof wpt.lon === "number"
       ) {
         const point = this.convertPoint(wpt, i);
         if (point) points.push(point);
@@ -169,43 +203,27 @@ export class FITToActivityConverter extends BaseActivityConverter {
     if (fit.sessionMesgs?.length) {
       obj.activities = fit.sessionMesgs.map((sessionMesg, index) => ({
         index,
-        name: sessionMesg.event,
-        sport_type: sessionMesg.sport,
-        description: sessionMesg.subActivity,
-        timestamp: sessionMesg.timestamp
-          ? dayjs(sessionMesg.timestamp).valueOf()
+        ...sessionMesg,
+        // 对坐标进行转换
+        startPositionLat: sessionMesg.startPositionLat
+          ? round(semicirclesToDegrees(Number(sessionMesg.startPositionLat)), 6)
           : undefined,
-        start_time: sessionMesg.startTime
-          ? dayjs(sessionMesg.startTime).valueOf()
+        startPositionLong: sessionMesg.startPositionLong
+          ? round(semicirclesToDegrees(Number(sessionMesg.startPositionLong)), 6)
           : undefined,
-        start_lat: sessionMesg.startPositionLat,
-        start_lon: sessionMesg.startPositionLong,
-        total_timer_time: sessionMesg.totalTimerTime,
-        total_elapsed_time: sessionMesg.totalElapsedTime,
-        total_distance: sessionMesg.totalDistance,
-        total_ascent: sessionMesg.totalAscent,
-        total_descent: sessionMesg.totalDescent,
-        total_cycles: sessionMesg.totalCycles,
-        total_work: sessionMesg.totalWork,
-        total_strokes: sessionMesg.totalStrokes,
-        avg_speed: sessionMesg.avgSpeed || sessionMesg.enhancedAvgSpeed,
-        max_speed: sessionMesg.maxSpeed || sessionMesg.enhancedMaxSpeed,
-        avg_power: sessionMesg.avgPower,
-        max_power: sessionMesg.maxPower,
-        normalized_power: sessionMesg.normalizedPower,
-        threshold_power: sessionMesg.thresholdPower,
-        avg_cadence: sessionMesg.avgCadence,
-        max_cadence: sessionMesg.maxCadence,
-        TTS: sessionMesg.trainingStressScore,
-        IF: sessionMesg.intensityFactor,
-        total_calories: sessionMesg.totalCalories,
-        total_fat_calories: sessionMesg.totalFatCalories,
+        endPositionLat: sessionMesg.endPositionLat
+          ? round(semicirclesToDegrees(Number(sessionMesg.endPositionLat)), 6)
+          : undefined,
+        endPositionLong: sessionMesg.endPositionLong
+          ? round(semicirclesToDegrees(Number(sessionMesg.endPositionLong)), 6)
+          : undefined,
         laps: this.convertFITLap2Trackseg(sessionMesg?.lapMesgs),
       }));
     } else if (fit.courseMesgs?.length) {
       obj.routes = fit.courseMesgs.map((courseMesg, index) => ({
         index,
-        name: courseMesg.event,
+        
+        ...courseMesg,
         records: this.convertLap2Points(courseMesg?.lapMesgs),
       }));
     }
@@ -244,16 +262,17 @@ export class FITToActivityConverter extends BaseActivityConverter {
 
     return {
       index: idx || 0,
-      lat: round(semicirclesToDegrees(Number(positionLat)), 6),
-      lon: round(semicirclesToDegrees(Number(positionLong)), 6),
+      // 对 positionLat/Long 进行转换
+      positionLat: round(semicirclesToDegrees(Number(positionLat)), 6),
+      positionLong: round(semicirclesToDegrees(Number(positionLong)), 6),
       altitude: altitude || enhancedAltitude,
       distance: distance,
       speed: speed || enhancedSpeed,
-      heart_rate: heartRate,
+      heartRate: heartRate,
       power: power,
       cadence: cadence,
       temperature: temperature,
-      timestamp: timestamp ? dayjs(timestamp).valueOf() : undefined,
+      timestamp: timestamp,
       ...rest,
     };
   }
@@ -263,6 +282,7 @@ export class FITToActivityConverter extends BaseActivityConverter {
     if (!laps?.length) return [];
 
     for (const lap of laps) {
+      console.log("Current lap to convert:", lap, lap.recordMesgs?.length);
       const points =
         lap?.recordMesgs
           ?.map((record, idx) => this.convertPoint(record, idx))
@@ -271,35 +291,13 @@ export class FITToActivityConverter extends BaseActivityConverter {
           ) || [];
       routeSeg.push({
         index: routeSeg.length,
-        name: lap.event,
-        sport_type: lap.sport,
-        timestamp: lap.timestamp ? dayjs(lap.timestamp).valueOf() : undefined,
-        start_time: lap.startTime ? dayjs(lap.startTime).valueOf() : undefined,
-        end_time:
-          lap.startTime && lap.totalElapsedTime
-            ? dayjs(lap.startTime).add(lap.totalElapsedTime, "second").valueOf()
-            : undefined,
-        start_lat: lap.startPositionLat,
-        start_lon: lap.startPositionLong,
-        end_lat: lap.endPositionLat,
-        end_lon: lap.endPositionLong,
-        total_timer_time: lap.totalTimerTime,
-        total_elapsed_time: lap.totalElapsedTime,
-        total_distance: lap.totalDistance,
-        total_ascent: lap.totalAscent,
-        total_descent: lap.totalDescent,
-        total_cycles: lap.totalCycles,
-        total_work: lap.totalWork,
-        total_strokes: lap.totalStrokes,
-        avg_speed: lap.avgSpeed || lap.enhancedAvgSpeed,
-        max_speed: lap.maxSpeed || lap.enhancedMaxSpeed,
-        avg_power: lap.avgPower,
-        max_power: lap.maxPower,
-        normalized_power: lap.normalizedPower,
-        avg_cadence: lap.avgCadence,
-        max_cadence: lap.maxCadence,
-        total_calories: lap.totalCalories,
-        total_fat_calories: lap.totalFatCalories,
+        ...lap,
+        // 对坐标数据进行转换
+        startPositionLat: lap.startPositionLat ? round(semicirclesToDegrees(Number(lap.startPositionLat)), 6): undefined,
+        startPositionLong: lap.startPositionLong ? round(semicirclesToDegrees(Number(lap.startPositionLong)), 6) : undefined,
+        endPositionLat: lap.endPositionLat ? round(semicirclesToDegrees(Number(lap.endPositionLat)), 6) : undefined,
+        endPositionLong: lap.endPositionLong ? round(semicirclesToDegrees(Number(lap.endPositionLong)), 6) : undefined,
+       
         records: points,
       });
     }
@@ -311,6 +309,7 @@ export class FITToActivityConverter extends BaseActivityConverter {
     if (!laps?.length) return [];
 
     for (const lap of laps) {
+      console.log("Converting lap to points:", lap, lap.recordMesgs?.length);
       const points =
         lap.recordMesgs
           ?.map((record, idx) => this.convertPoint(record, idx))
@@ -351,101 +350,80 @@ export class TCXToActivityConverter extends BaseActivityConverter {
     };
 
     if (tcx.Activities?.Activity?.length) {
-      obj.activities = tcx.Activities.Activity.map((activity, index) => ({
-        index,
-        name: activity.Id,
-        start_time: activity.Id ? dayjs(activity.Id).valueOf() : undefined,
-        sport_type: activity.Activity,
-        laps: this.convertLap2Trackseg(activity.Lap),
-      }));
+      obj.activities = tcx.Activities.Activity.map((activity, index) =>
+        this.convertTCXActivityToActivity(activity, index)
+      );
     }
 
     if (tcx.Courses?.Course?.length) {
-      obj.routes = [];
-      for (const course of tcx.Courses.Course) {
-        const tracks = course.Track || [];
-        for (const track of tracks) {
-          obj.routes.push({
-            index: obj.routes.length,
-            name: course.Name || "",
-            records: this.convertTCXTrack(track),
-          });
-        }
-      }
+      // TODO: 处理 Course
     }
-
     return obj;
   }
+  /**
+   * 将 tcx 的 activity 转为 ActivityType
+   * @param activity 
+   */
+  private convertTCXActivityToActivity(activity: TCXActivityType, idx: number): ActivityType {
+
+    const laps = activity.Lap?.map((lap, segIdx) => this.convertTCXLap2Lap(lap, segIdx)) || [];
+    // 聚合数据
+    const aggregatedData = new MetricsAggregator().calculateLapAggMetrics(laps) as SessionMesgType;
+    return {
+      index: idx,
+      messageIndex: idx,
+      laps: laps,
+      ...aggregatedData,
+    };
+  }
+
+  /**
+   * 将 TCX Lap 转为 ActivityLapType
+   * @param lap 
+   * @param idx 
+   * @returns 
+   */
+  private convertTCXLap2Lap(lap: TCXActivityLapType, idx:number): ActivityLapType {
+    // 将 track point 提取出来
+    const allPoints = lap?.Track?.flatMap(track => track.Trackpoint) || [];
+    const points = allPoints
+      ?.filter(
+        (point: TrackpointType | undefined): point is TrackpointType =>
+          point !== undefined &&
+          point.Position?.LatitudeDegrees !== undefined &&
+          point.Position.LongitudeDegrees !== undefined && 
+          point.Time !== undefined
+      )
+      .map((point: TrackpointType, ptIdx: number) =>
+        this.convertPoint(point, ptIdx)
+      )
+      || [];
+
+    const metricsAggregator = new MetricsAggregator();
+    const aggregatedData = metricsAggregator.calculateRecordsAggMetrics(points);
+
+    return {
+      index: idx,
+      messageIndex:idx,
+      ...aggregatedData,
+      records: aggregatedData?.records || [],
+    };
+  }
+
 
   protected convertPoint(
     point: TrackpointType,
     idx?: number
-  ): ActivityRecordType | undefined {
+  ): ActivityRecordType {
     const { Position, Time, DistanceMeters, AltitudeMeters } = point;
-
-    if (
-      !Position?.LatitudeDegrees ||
-      !Position?.LongitudeDegrees ||
-      Position.LatitudeDegrees === "" ||
-      Position.LongitudeDegrees === ""
-    ) {
-      return undefined;
-    }
 
     return {
       index: idx || 0,
-      lat: Number(Position.LatitudeDegrees),
-      lon: Number(Position.LongitudeDegrees),
-      timestamp: Time ? dayjs(Time).valueOf() : undefined,
+      positionLat: Number(Position!.LatitudeDegrees),
+      positionLong: Number(Position!.LongitudeDegrees),
+      timestamp: dayjs(Time).toDate(),
       distance: DistanceMeters,
       altitude: AltitudeMeters,
     };
-  }
-
-  private convertLap2Trackseg(laps: any[]): ActivityLapType[] {
-    const routeSeg: ActivityLapType[] = [];
-    for (const lap of laps) {
-      if (lap.Track) {
-        for (const track of lap.Track) {
-          if (track.Trackpoint) {
-            const points = track.Trackpoint.map(
-              (trackpoint: TrackpointType, idx: number) =>
-                this.convertPoint(trackpoint, idx)
-            ).filter(
-              (
-                point: ActivityRecordType | undefined
-              ): point is ActivityRecordType => point !== undefined
-            );
-
-            const seg: ActivityLapType = {
-              index: routeSeg.length,
-              total_elapsed_time: lap.TotalTimeSeconds,
-              total_distance: lap.DistanceMeters,
-              start_time: points?.[0]?.timestamp,
-              end_time: points?.[points.length - 1]?.timestamp,
-
-              max_speed: lap.MaximumSpeed,
-              total_calories: lap.Calories,
-              avg_cadence: lap?.Cadence?.Low,
-              max_cadence: lap?.Cadence?.High,
-              records: points,
-            };
-            routeSeg.push(seg);
-          }
-        }
-      }
-    }
-    return routeSeg;
-  }
-
-  private convertTCXTrack(track: any): ActivityRecordType[] {
-    if (!track.Trackpoint) return [];
-
-    return track.Trackpoint.map((trackpoint: TrackpointType, idx: number) =>
-      this.convertPoint(trackpoint, idx)
-    ).filter(
-      (point: ActivityRecordType | undefined): point is ActivityRecordType =>
-        point !== undefined
-    );
   }
 }

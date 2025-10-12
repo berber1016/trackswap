@@ -57,11 +57,7 @@ export class ActivityToGPXEncoder extends BaseActivityEncoder {
       version: "1.1",
       creator: "TrackSwap",
       metadata: {
-        name: firstActivity.name || "Unnamed Activity",
-        desc: firstActivity.description,
-        time: firstActivity.timestamp
-          ? this.convertTimeToDate(firstActivity.timestamp)
-          : undefined,
+        time: firstActivity.timestamp,
       },
     };
 
@@ -92,14 +88,12 @@ export class ActivityToGPXEncoder extends BaseActivityEncoder {
    */
   private convertRecords2Wpts(points: ActivityRecordType[]): WptType[] {
     return points
-      ?.filter((v) => !!v.lat && !!v.lon)
+      ?.filter((v) => typeof v.positionLat === "number" && typeof v.positionLong === "number")
       .map((point) => ({
-        lat: point.lat,
-        lon: point.lon,
+        lat: point.positionLat as number,
+        lon: point.positionLong as number,
         ele: point?.altitude,
-        time: point?.timestamp
-          ? this.convertTimeToDate(point.timestamp)
-          : undefined,
+        time: point?.timestamp,
         speed: point?.speed,
         hdop: point?.hdop,
         vdop: point?.vdop,
@@ -110,8 +104,8 @@ export class ActivityToGPXEncoder extends BaseActivityEncoder {
 
   private convertRoute2GPXRoute(route: ActivityLapType): RteType {
     return {
-      name: route?.name,
-      desc: route?.description,
+      // name
+      // description
       rtept: route.records ? this.convertRecords2Wpts(route.records) : [],
     };
   }
@@ -122,14 +116,13 @@ export class ActivityToGPXEncoder extends BaseActivityEncoder {
    */
   private convertActivity2GPXTrack(activity: ActivityType): TrkType {
     return {
-      name: activity?.name,
       // extensions
-      trkseg:
-        activity.laps?.map((lap) => ({
-          trkpt: lap?.records?.length
-            ? this.convertRecords2Wpts(lap.records)
-            : [],
-        })) || [],
+      trkseg:  activity.laps?.map((lap) => {
+      console.log("Converting lap to trkseg:", lap, lap.records?.[0]);
+      return {
+        trkpt: lap.records ? this.convertRecords2Wpts(lap.records) : [],
+      };
+    }) || []
     };
   }
   /**
@@ -142,8 +135,8 @@ export class ActivityToGPXEncoder extends BaseActivityEncoder {
 
     // Extract TrackPointExtension data
     const trackPointData: any = {};
-    if (typeof point?.heart_rate != "undefined") {
-      trackPointData["gpxtpx:hr"] = point.heart_rate;
+    if (typeof point?.heartRate != "undefined") {
+      trackPointData["gpxtpx:hr"] = point.heartRate;
     }
     if (typeof point?.cadence != "undefined") {
       trackPointData["gpxtpx:cad"] = point.cadence;
@@ -181,9 +174,10 @@ export class ActivityToFITEncoder extends BaseActivityEncoder {
     if (context.targetFormat !== "fit") return undefined;
     if (!file?.activities?.length) return undefined;
     const fit: FITFileType = {};
-    fit.courseMesgs = file.routes?.map((route) =>
-      this.convertRoute2FITCourse(route)
-    );
+    // TODO: 解析 routes
+    // fit.courseMesgs = file.routes?.map((route) =>
+    //   this.convertRoute2FITCourse(route)
+    // );
     // Convert activity to sessionMesg
     fit.sessionMesgs = file.activities?.map((activity) =>
       this.convertActivity2FITSession(activity)
@@ -194,20 +188,10 @@ export class ActivityToFITEncoder extends BaseActivityEncoder {
 
   private convertActivity2FITSession(activity: ActivityType): SessionMesgType {
     const session: SessionMesgType = {
-      event: activity?.name || "session",
-      sport: activity?.sport_type || "generic",
-      startTime: activity.start_time
-        ? this.convertTimeToString(activity.start_time)
-        : this.convertTimeToString(undefined),
-      totalDistance: activity.total_distance,
-      totalElapsedTime: activity.total_elapsed_time,
-      avgSpeed: activity.avg_speed,
-      maxSpeed: activity.max_speed,
-      avgPower: activity.avg_power,
-      maxPower: activity.max_power,
-      totalAscent: activity.total_ascent,
-      totalDescent: activity.total_descent,
-      totalCalories: activity.total_calories,
+      ...activity,
+      event: activity?.event || "session",
+      sport: activity?.sport || "generic",
+
       lapMesgs: activity.laps?.map((lap) => this.convertLap2FITLap(lap)) || [],
     };
 
@@ -216,77 +200,48 @@ export class ActivityToFITEncoder extends BaseActivityEncoder {
 
   private convertLap2FITLap(lap: ActivityLapType): LapMesgType {
     const lapMesg: LapMesgType = {
-      startTime: lap.start_time
-        ? this.convertTimeToString(lap.start_time)
-        : this.convertTimeToString(undefined),
-      totalElapsedTime: lap.total_elapsed_time,
-      totalDistance: lap.total_distance,
-      avgSpeed: lap.avg_speed,
-      maxSpeed: lap.max_speed,
-      avgCadence: lap.avg_cadence,
-      maxCadence: lap.max_cadence,
-      avgPower: lap.avg_power,
-      maxPower: lap.max_power,
-      totalAscent: lap.total_ascent,
-      totalDescent: lap.total_descent,
-      totalCalories: lap.total_calories,
-      recordMesgs:
-        lap.records?.map((point) => this.convertPoint2FITRecord(point)) || [],
+      startTime: lap.startTime,
+      ...lap,
+      recordMesgs: lap.records?.map((point) => this.convertPoint2FITRecord(point)) || [],
     };
 
     return lapMesg;
   }
 
   private convertPoint2FITRecord(point: ActivityRecordType): RecordMesgType {
-    return {
-      timestamp: point.timestamp
-        ? this.convertTimeToString(point.timestamp)
-        : this.convertTimeToString(undefined),
-      positionLat: point.lat ? degreesToSemicircles(point.lat) : undefined,
-      positionLong: point.lon ? degreesToSemicircles(point.lon) : undefined,
-      altitude: point.altitude || point.enhanced_altitude,
-      speed: point.speed,
-      power: point.power,
-      heartRate: point.heart_rate,
-      cadence: point.cadence,
-      temperature: point.temperature,
-      distance: point.distance,
-      enhancedSpeed: point.enhanced_speed,
-      enhancedAltitude: point.enhanced_altitude,
-      accumulatedPower: point.accumulated_power,
-    };
+    return point;
   }
 
-  private convertRoute2FITCourse(route: ActivityLapType): any {
-    return {
-      event: route.name || "course",
-      lapMesgs: route.records ? [this.convertPoints2FITLap(route.records)] : [],
-    };
-  }
+  // private convertRoute2FITCourse(route: ActivityLapType): any {
+  //   return {
+  //     event: route.name || "course",
+  //     lapMesgs: route.records ? [this.convertPoints2FITLap(route.records)] : [],
+  //   };
+  // }
 
-  private convertPoints2FITLap(points: ActivityRecordType[]): LapMesgType {
-    // Calculate basic statistics
-    const firstPoint = points[0];
-    const lastPoint = points[points.length - 1];
+  // private convertPoints2FITLap(points: ActivityRecordType[]): LapMesgType {
+  //   // Calculate basic statistics
+  //   const firstPoint = points[0];
+  //   const lastPoint = points[points.length - 1];
 
-    const startTime = firstPoint?.timestamp
-      ? this.convertTimeToString(firstPoint.timestamp)
-      : this.convertTimeToString(undefined);
-    const totalElapsedTime =
-      firstPoint?.timestamp && lastPoint?.timestamp
-        ? Math.round((lastPoint.timestamp - firstPoint.timestamp) / 1000)
-        : 0;
+  //   const startTime = firstPoint?.timestamp
+  //     ? this.convertTimeToString(firstPoint.timestamp)
+  //     : this.convertTimeToString(undefined);
+  //   const totalElapsedTime =
+  //     firstPoint?.timestamp && lastPoint?.timestamp
+  //       ? Math.round((lastPoint.timestamp - firstPoint.timestamp) / 1000)
+  //       : 0;
 
-    // Calculate total distance (if points have distance information)
-    const totalDistance = lastPoint?.distance || 0;
+  //   // Calculate total distance (if points have distance information)
+  //   const totalDistance = lastPoint?.distance || 0;
 
-    return {
-      startTime: startTime,
-      totalElapsedTime: totalElapsedTime,
-      totalDistance: totalDistance,
-      recordMesgs: points.map((point) => this.convertPoint2FITRecord(point)),
-    };
-  }
+  //   return {
+  //     startTime: startTime,
+  //     totalElapsedTime: totalElapsedTime,
+  //     totalDistance: totalDistance,
+  //     recordMesgs: points.map((point) => this.convertPoint2FITRecord(point)),
+  //   };
+  // }
 }
 
 // ============ TCX Encoder ============
@@ -324,12 +279,12 @@ export class ActivityToTCXEncoder extends BaseActivityEncoder {
   private convertActivity2TCXActivity(activity: ActivityType): TCXActivityType {
     // Ensure Activity field is the correct type
     let sport: "Other" | "Running" | "Biking" = "Other";
-    if (activity.sport_type === "Running" || activity.sport_type === "Biking") {
-      sport = activity.sport_type as "Running" | "Biking";
+    if (activity.sport === "Running" || activity.sport === "Biking") {
+      sport = activity.sport as "Running" | "Biking";
     }
 
     return {
-      Id: activity.name || `Activity_${Date.now()}`,
+      Id: `Activity_${Date.now()}`,
       Activity: sport,
       Lap: activity.laps?.map((lap) => this.convertLap2TCXLap(lap)) || [],
     };
@@ -337,28 +292,33 @@ export class ActivityToTCXEncoder extends BaseActivityEncoder {
 
   private convertLap2TCXLap(lap: ActivityLapType): TCXActivityLapType {
     const tcxLap: TCXActivityLapType = {
-      TotalTimeSeconds: lap.total_elapsed_time,
-      DistanceMeters: lap.total_distance,
-      MaximumSpeed: lap.max_speed,
-      Calories: lap.total_calories,
-      AverageHeartRateBpm: lap.avg_heart_rate,
-      MaximumHeartRateBpm: lap.max_heart_rate,
+      TotalTimeSeconds: lap.totalElapsedTime,
+      DistanceMeters: lap.totalDistance,
+      MaximumSpeed: lap.maxSpeed,
+      Calories: lap.totalCalories,
+      AverageHeartRateBpm: lap.avgHeartRate,
+      MaximumHeartRateBpm: lap.maxHeartRate,
       Intensity: "Active",
       TriggerMethod: "Manual",
       Track: lap.records ? [this.convertRecords2TCXTrack(lap.records)] : [],
     };
 
     // Add cadence information
-    if (lap.avg_cadence !== undefined || lap.max_cadence !== undefined) {
+    if (lap.avgCadence !== undefined || lap.maxCadence !== undefined) {
       tcxLap.Cadence = {
-        Low: lap.avg_cadence || 0,
-        High: lap.max_cadence || 0,
+        Low: lap.avgCadence || 0,
+        High: lap.maxCadence || 0,
       };
     }
 
     return tcxLap;
   }
 
+  /**
+   * 将 ActivityPoint 转为 TCX TrackpointType
+   * @param records 
+   * @returns 
+   */
   private convertRecords2TCXTrack(records: ActivityRecordType[]): TrackType {
     return {
       Trackpoint: records.map((point) =>
@@ -371,20 +331,18 @@ export class ActivityToTCXEncoder extends BaseActivityEncoder {
     point: ActivityRecordType
   ): TrackpointType {
     const trackpoint: TrackpointType = {
-      Time: point.timestamp
-        ? this.convertTimeToString(point.timestamp)
-        : this.convertTimeToString(undefined),
+      Time: dayjs(point.timestamp).toISOString(),
       Position: {
-        LatitudeDegrees: point.lat?.toString() || "0",
-        LongitudeDegrees: point.lon?.toString() || "0",
+        LatitudeDegrees: point.positionLat?.toString() || "0",
+        LongitudeDegrees: point.positionLong?.toString() || "0",
       },
-      AltitudeMeters: point.altitude || point.enhanced_altitude,
+      AltitudeMeters: point.altitude,
       DistanceMeters: point.distance,
     };
 
     // Handle heart rate data
-    if (point.heart_rate) {
-      trackpoint.HeartRateBpm = point.heart_rate;
+    if (point.heartRate) {
+      trackpoint.HeartRateBpm = point.heartRate;
     }
 
     // Handle cadence data
@@ -409,7 +367,7 @@ export class ActivityToTCXEncoder extends BaseActivityEncoder {
 
   private convertRoute2TCXCourse(route: ActivityLapType): CourseType {
     return {
-      Name: route.name || `Course_${Date.now()}`,
+      Name: `Course_${Date.now()}`,
       Track: route.records ? [this.convertRecords2TCXTrack(route.records)] : [],
     };
   }

@@ -95,7 +95,9 @@ export class ActivityProcessor {
 
       // Execute conversion
       const startTime = Date.now();
+      
       const result = converter.convert(sourceData as any, context);
+      console.log("sourceData & result", (sourceData as any)?.trk?.[0]?.trkseg, result);
       context.performance.convertTime = Date.now() - startTime;
 
       if (!result) {

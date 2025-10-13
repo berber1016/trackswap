@@ -134,6 +134,8 @@ export class MetricsAggregator {
 
         
     }
+
+    return result
   }
   /**
    * 将 laps 数据聚合起来，返回给 Activity
@@ -277,7 +279,7 @@ export class MetricsAggregator {
    */
   private preprocessRecords(records: ActivityRecordType[]): ActivityRecordType[] {
     if (!records || records.length === 0) return records;
-
+    
     // 过滤掉没有时间戳的点，并按时间排序
     let normalizedRecords = records.filter(r => r.timestamp).sort((a, b) => (a.timestamp!.valueOf() - b.timestamp!.valueOf()));
     // 累计功

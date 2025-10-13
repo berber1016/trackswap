@@ -355,9 +355,10 @@ export class TCXEncoder {
     const parts: string[] = ["<Trackpoint>"];
 
     // Time (usually required)
-    if (trackpoint.Time) {
-      parts.push(`<Time>${this.formatTime(trackpoint.Time)}</Time>`);
+    if (!trackpoint.Time) {
+        return ""
     }
+    parts.push(`<Time>${this.formatTime(trackpoint.Time)}</Time>`);
 
     // Position
     if (trackpoint.Position) {
@@ -406,7 +407,7 @@ export class TCXEncoder {
   private buildPosition(position: PositionType): string {
     const parts: string[] = ["<Position>"];
 
-    if (position.LatitudeDegrees) {
+    if (position?.LatitudeDegrees) {
       parts.push(
         `<LatitudeDegrees>${this.formatCoordinate(
           parseFloat(position.LatitudeDegrees)
@@ -414,7 +415,7 @@ export class TCXEncoder {
       );
     }
 
-    if (position.LongitudeDegrees) {
+    if (position?.LongitudeDegrees) {
       parts.push(
         `<LongitudeDegrees>${this.formatCoordinate(
           parseFloat(position.LongitudeDegrees)

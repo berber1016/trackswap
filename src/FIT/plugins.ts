@@ -39,7 +39,6 @@ export class SessionStructurePlugin extends BaseFITStructurePlugin {
             lapStartTime >= sessionStartTime && lapEndTime <= sessionEndTime
           );
         }) || [];
-      console.log("Current session has Laps:", sessionLaps?.length || 0);
       // Find corresponding Records for each Lap
       const lapsWithRecords = sessionLaps.map((lap) => {
         const lapStartTime = dayjs(lap.startTime).valueOf();

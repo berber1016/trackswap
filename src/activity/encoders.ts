@@ -88,10 +88,10 @@ export class ActivityToGPXEncoder extends BaseActivityEncoder {
    */
   private convertRecords2Wpts(points: ActivityRecordType[]): WptType[] {
     return points
-      ?.filter((v) => typeof v.positionLat === "number" && typeof v.positionLong === "number")
+      ?.filter((v) => v.timestamp)
       .map((point) => ({
-        lat: point.positionLat as number,
-        lon: point.positionLong as number,
+        lat: point?.positionLat,
+        lon: point?.positionLong,
         ele: point?.altitude,
         time: point?.timestamp,
         speed: point?.speed,
@@ -118,7 +118,6 @@ export class ActivityToGPXEncoder extends BaseActivityEncoder {
     return {
       // extensions
       trkseg:  activity.laps?.map((lap) => {
-      console.log("Converting lap to trkseg:", lap, lap.records?.[0]);
       return {
         trkpt: lap.records ? this.convertRecords2Wpts(lap.records) : [],
       };
@@ -333,8 +332,8 @@ export class ActivityToTCXEncoder extends BaseActivityEncoder {
     const trackpoint: TrackpointType = {
       Time: dayjs(point.timestamp).toISOString(),
       Position: {
-        LatitudeDegrees: point.positionLat?.toString() || "0",
-        LongitudeDegrees: point.positionLong?.toString() || "0",
+        LatitudeDegrees: point?.positionLat?.toString(),
+        LongitudeDegrees: point?.positionLong?.toString(),
       },
       AltitudeMeters: point.altitude,
       DistanceMeters: point.distance,
@@ -349,7 +348,7 @@ export class ActivityToTCXEncoder extends BaseActivityEncoder {
     if (point.cadence) {
       trackpoint.Cadence = {
         Low: point.cadence,
-        High: point.cadence,
+        High: point.cadence256 || point.cadence,
       };
     }
 

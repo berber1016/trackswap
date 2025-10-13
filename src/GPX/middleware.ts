@@ -78,11 +78,8 @@ export class ValidationMiddleware extends BaseGPXMiddleware {
           for (const segment of track.trkseg) {
             if (segment.trkpt) {
               for (const point of segment.trkpt) {
-                if (
-                  typeof point.lat !== "number" ||
-                  typeof point.lon !== "number"
-                ) {
-                  errors.push("Invalid track point coordinates");
+                if (!!point.time) {
+                  errors.push("Invalid track point time");
                 }
               }
             }

@@ -80,9 +80,9 @@ export class GPXToActivityConverter extends BaseActivityConverter {
 
     return {
       index: idx || 0,
-      positionLat: point.lat,
-      positionLong: point.lon,
-      altitude: point.ele,
+      positionLat: point?.lat,
+      positionLong: point?.lon,
+      altitude: point?.ele,
       heartRate: point?.heartRate,
       speed: point?.speed,
       power: point?.power,
@@ -118,9 +118,9 @@ export class GPXToActivityConverter extends BaseActivityConverter {
    * @returns 
    */
   private convertTrackSeg2Lap(seg: TrksegType, idx: number): ActivityLapType {
-    console.log("Converting trkseg to lap:", seg, seg.trkpt?.[0]);
     const points = seg.trkpt?.filter(
-            (point: WptType | undefined) => point !== undefined && point.lat && point.lon)?.map((trkpt: WptType, ptIdx: number) =>
+            (point: WptType | undefined) => point !== undefined && point.time)
+            ?.map((trkpt: WptType, ptIdx: number) =>
             this.convertPoint(trkpt, ptIdx)
           )
       || [];
@@ -143,14 +143,8 @@ export class GPXToActivityConverter extends BaseActivityConverter {
   private convertWpts2Points(wpts: WptType[]): ActivityRecordType[] {
     const points: ActivityRecordType[] = [];
     for (let i = 0; i < wpts.length; i++) {
-      const wpt = wpts[i];
-      if (
-        wpt.lat != null &&
-        wpt.lon != null
-      ) {
-        const point = this.convertPoint(wpt, i);
+      const point = this.convertPoint(wpts[i], i);
         if (point) points.push(point);
-      }
     }
     return points;
   }
@@ -205,16 +199,16 @@ export class FITToActivityConverter extends BaseActivityConverter {
         index,
         ...sessionMesg,
         // 对坐标进行转换
-        startPositionLat: sessionMesg.startPositionLat
+        startPositionLat: sessionMesg?.startPositionLat
           ? round(semicirclesToDegrees(Number(sessionMesg.startPositionLat)), 6)
           : undefined,
-        startPositionLong: sessionMesg.startPositionLong
+        startPositionLong: sessionMesg?.startPositionLong
           ? round(semicirclesToDegrees(Number(sessionMesg.startPositionLong)), 6)
           : undefined,
-        endPositionLat: sessionMesg.endPositionLat
+        endPositionLat: sessionMesg?.endPositionLat
           ? round(semicirclesToDegrees(Number(sessionMesg.endPositionLat)), 6)
           : undefined,
-        endPositionLong: sessionMesg.endPositionLong
+        endPositionLong: sessionMesg?.endPositionLong
           ? round(semicirclesToDegrees(Number(sessionMesg.endPositionLong)), 6)
           : undefined,
         laps: this.convertFITLap2Trackseg(sessionMesg?.lapMesgs),
@@ -222,14 +216,18 @@ export class FITToActivityConverter extends BaseActivityConverter {
     } else if (fit.courseMesgs?.length) {
       obj.routes = fit.courseMesgs.map((courseMesg, index) => ({
         index,
-        
         ...courseMesg,
         records: this.convertLap2Points(courseMesg?.lapMesgs),
       }));
     }
     return obj;
   }
-
+  /**
+   * 将 FIT 的 recordMesg 转为 ActivityRecordType
+   * @param point 
+   * @param idx 
+   * @returns 
+   */
   protected convertPoint(
     point: RecordMesgType,
     idx?: number
@@ -238,67 +236,46 @@ export class FITToActivityConverter extends BaseActivityConverter {
       positionLong,
       positionLat,
       altitude,
-      timestamp,
-      heartRate,
-      cadence,
-      distance,
-      power,
       enhancedAltitude,
       enhancedSpeed,
       speed,
-      temperature,
       ...rest
     } = point;
 
-    if (
-      positionLong == null ||
-      positionLat == null
-      // ||
-      // typeof positionLong !== "number" ||
-      // typeof positionLat !== "number"
-    ) {
-      return undefined;
-    }
-
     return {
       index: idx || 0,
-      // 对 positionLat/Long 进行转换
-      positionLat: round(semicirclesToDegrees(Number(positionLat)), 6),
-      positionLong: round(semicirclesToDegrees(Number(positionLong)), 6),
-      altitude: altitude || enhancedAltitude,
-      distance: distance,
-      speed: speed || enhancedSpeed,
-      heartRate: heartRate,
-      power: power,
-      cadence: cadence,
-      temperature: temperature,
-      timestamp: timestamp,
+      positionLat: positionLat ? round(semicirclesToDegrees(Number(positionLat)), 6) : undefined,
+      positionLong: positionLong ? round(semicirclesToDegrees(Number(positionLong)), 6) : undefined,
+      altitude: altitude || enhancedAltitude || undefined,
+      speed: speed || enhancedSpeed || undefined,
       ...rest,
     };
   }
-
+  /**
+   * 
+   * @param laps 
+   * @returns 
+   */
   private convertFITLap2Trackseg(laps?: LapMesgType[]): ActivityLapType[] {
     const routeSeg: ActivityLapType[] = [];
     if (!laps?.length) return [];
-
-    for (const lap of laps) {
-      console.log("Current lap to convert:", lap, lap.recordMesgs?.length);
-      const points =
+    for(let i = 0; i < laps.length; i++) {
+      const lap = laps[i];
+      const records =
         lap?.recordMesgs
           ?.map((record, idx) => this.convertPoint(record, idx))
-          .filter(
-            (point): point is ActivityRecordType => point !== undefined
-          ) || [];
+          .filter((point) => point !== undefined) || [];
+      
       routeSeg.push({
-        index: routeSeg.length,
+        index: i,
         ...lap,
         // 对坐标数据进行转换
-        startPositionLat: lap.startPositionLat ? round(semicirclesToDegrees(Number(lap.startPositionLat)), 6): undefined,
-        startPositionLong: lap.startPositionLong ? round(semicirclesToDegrees(Number(lap.startPositionLong)), 6) : undefined,
-        endPositionLat: lap.endPositionLat ? round(semicirclesToDegrees(Number(lap.endPositionLat)), 6) : undefined,
-        endPositionLong: lap.endPositionLong ? round(semicirclesToDegrees(Number(lap.endPositionLong)), 6) : undefined,
+        startPositionLat: lap?.startPositionLat ? round(semicirclesToDegrees(Number(lap.startPositionLat)), 6): undefined,
+        startPositionLong: lap?.startPositionLong ? round(semicirclesToDegrees(Number(lap.startPositionLong)), 6) : undefined,
+        endPositionLat: lap?.endPositionLat ? round(semicirclesToDegrees(Number(lap.endPositionLat)), 6) : undefined,
+        endPositionLong: lap?.endPositionLong ? round(semicirclesToDegrees(Number(lap.endPositionLong)), 6) : undefined,
        
-        records: points,
+        records: records,
       });
     }
     return routeSeg;
@@ -309,7 +286,6 @@ export class FITToActivityConverter extends BaseActivityConverter {
     if (!laps?.length) return [];
 
     for (const lap of laps) {
-      console.log("Converting lap to points:", lap, lap.recordMesgs?.length);
       const points =
         lap.recordMesgs
           ?.map((record, idx) => this.convertPoint(record, idx))
@@ -390,8 +366,6 @@ export class TCXToActivityConverter extends BaseActivityConverter {
       ?.filter(
         (point: TrackpointType | undefined): point is TrackpointType =>
           point !== undefined &&
-          point.Position?.LatitudeDegrees !== undefined &&
-          point.Position.LongitudeDegrees !== undefined && 
           point.Time !== undefined
       )
       .map((point: TrackpointType, ptIdx: number) =>
@@ -419,8 +393,8 @@ export class TCXToActivityConverter extends BaseActivityConverter {
 
     return {
       index: idx || 0,
-      positionLat: Number(Position!.LatitudeDegrees),
-      positionLong: Number(Position!.LongitudeDegrees),
+      positionLat: Position?.LatitudeDegrees ? Number(Position!.LatitudeDegrees) : undefined,
+      positionLong: Position?.LongitudeDegrees ? Number(Position!.LongitudeDegrees) : undefined,
       timestamp: dayjs(Time).toDate(),
       distance: DistanceMeters,
       altitude: AltitudeMeters,

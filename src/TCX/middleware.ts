@@ -1,6 +1,6 @@
 import { Token, TokenAST } from "../types.js";
 import { BaseTCXMiddleware } from "./base.js";
-import { TCXContext } from "./types.js";
+import { TCXContext, TCXFileType } from "./types.js";
 
 // ============ Example Middleware ============
 
@@ -59,7 +59,7 @@ export class TCXValidationMiddleware extends BaseTCXMiddleware {
     return result;
   }
 
-  private validateTCX(tcx: any): string[] {
+  private validateTCX(tcx: TCXFileType): string[] {
     const errors: string[] = [];
 
     if (!tcx.version) {
@@ -88,11 +88,7 @@ export class TCXValidationMiddleware extends BaseTCXMiddleware {
               for (const track of lap.Track) {
                 if (track.Trackpoint) {
                   for (const point of track.Trackpoint) {
-                    if (
-                      point.Position &&
-                      (!point.Position.LatitudeDegrees ||
-                        !point.Position.LongitudeDegrees)
-                    ) {
+                    if (!!point.Time) {
                       errors.push("Invalid trackpoint coordinates");
                     }
                   }

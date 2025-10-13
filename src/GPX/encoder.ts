@@ -240,14 +240,14 @@ export class GPXEncoder {
     point: WptType,
     tagName: "wpt" | "trkpt" | "rtept"
   ): string {
-    if (!this.isValidCoordinate(point.lat, point.lon)) {
+    if (point.time === undefined) {
       return "";
     }
 
     const parts: string[] = [
       `<${tagName} lat="${this.escapeXMLAttribute(
-        this.formatCoordinate(point.lat)
-      )}" lon="${this.escapeXMLAttribute(this.formatCoordinate(point.lon))}">`,
+        point.lat ? this.formatCoordinate(point.lat) : ""
+      )}" lon="${this.escapeXMLAttribute(point.lon ? this.formatCoordinate(point.lon) : "")}">`,
     ];
 
     // Basic attributes
@@ -258,7 +258,7 @@ export class GPXEncoder {
       this.formatElevation
     );
 
-    if (point.time) {
+    if (point?.time) {
       parts.push(this.buildTimeElement(point.time));
     }
 
@@ -645,7 +645,7 @@ export class GPXEncoder {
   /**
    * Validate coordinate validity
    */
-  private isValidCoordinate(lat: number, lon: number): boolean {
+  private isValidCoordinate(lat?: number, lon?: number): boolean {
     return (
       lat !== undefined &&
       lat !== null &&

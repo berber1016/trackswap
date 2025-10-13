@@ -61,7 +61,7 @@ export class MetricsAggregator {
       if(record?.distance){
         result.totalDistance = record.distance
       } else if(i > 0 ) {
-        accDistance += this.calculatePointDistance(records[i-1], record) || 0;
+        accDistance += this.calculatePointDistanceByPosition(records[i-1], record) || 0;
         result.totalDistance = accDistance;
       }
       // 根据速度计算平均速度和最大速度
@@ -292,14 +292,10 @@ export class MetricsAggregator {
       const record = normalizedRecords[i];
       const newRecord = { ...record };
 
-      // 过滤没有时间或位置数据的点
-      if(!newRecord.positionLat || !newRecord.positionLong){
-        continue;
-      }
       if(i > 0 && prevRecord ) {
         // 计算距离
-        if(!record.distance){
-          newRecord.distance = this.calculatePointDistance(prevRecord!, newRecord) || 0;
+        if(!newRecord.distance){
+          newRecord.distance = this.calculatePointDistanceByPosition(prevRecord!, newRecord) || 0;
         }
         // 计算速度
         if(!record.speed){
@@ -327,12 +323,13 @@ export class MetricsAggregator {
    * @param currPoint 当前点
    * @returns 距离（米），如果无法计算则返回 undefined
    */
-  private calculatePointDistance(
+  private calculatePointDistanceByPosition(
     prevPoint: ActivityRecordType,
     currPoint: ActivityRecordType
-  ): number {
+  ): number | undefined {
+
     if (!prevPoint.positionLat || !prevPoint.positionLong || !currPoint.positionLat || !currPoint.positionLong) {
-      return 0;
+      return undefined;
     }
 
     try {
@@ -344,7 +341,7 @@ export class MetricsAggregator {
       );
     } catch (error) {
       console.warn("Distance calculation failed:", error);
-      return 0;
+      return undefined;
     }
   }
 

@@ -259,7 +259,6 @@ export class TrackSwap {
           break;
         case "fit":
           sourceData = await this.parseFIT(sourceFile);
-          console.log("Parsed FIT data:", sourceData);
           break;
         case "tcx":
           sourceData = await this.parseTCX(sourceFile);
@@ -277,7 +276,6 @@ export class TrackSwap {
           file = await this.convertGPXToActivity(sourceData as GPX11Type);
           break;
         case "fit":
-          console.log("Converting FIT to Activity:", sourceData);
           file = await this.convertFITToActivity(sourceData as FITFileType);
           break;
         case "tcx":
@@ -288,11 +286,11 @@ export class TrackSwap {
             `Unsupported source file format conversion: ${detectedSourceType}`
           );
       }
-
       // 3. Encode to target format
       switch (targetType) {
         case "gpx":
           const gpxData = await this.convertActivityToGPX(file);
+          
           return await this.encodeGPX(gpxData);
         case "fit":
           const fitData = await this.convertActivityToFIT(file);

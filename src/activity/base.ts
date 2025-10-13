@@ -230,15 +230,12 @@ export abstract class BaseActivityMiddleware
   protected validateRoute(route: ActivityLapType): boolean {
     return !!(route.records && route.records.length > 0);
   }
-
+  /**
+   * 仅判断有没有 timestamp
+   * @param point 
+   * @returns 
+   */
   protected validatePoint(point: ActivityRecordType): boolean {
-    return !!(
-      point.positionLat &&
-      point.positionLong &&
-      point.positionLat >= -90 &&
-      point.positionLat <= 90 &&
-      point.positionLong >= -180 &&
-      point.positionLong <= 180
-    );
+    return !!point.timestamp;
   }
 }

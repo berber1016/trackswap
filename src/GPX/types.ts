@@ -130,8 +130,8 @@ export interface MetadataType {
  * A list of waypoints.
  */
 export interface WptType {
-  lat: LatitudeType;
-  lon: LongitudeType;
+  lat?: LatitudeType;
+  lon?: LongitudeType;
   /**
    * Elevation (in meters) of the point.
    */

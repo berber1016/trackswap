@@ -271,8 +271,8 @@ export class FITEncoder {
         : undefined,
       total_elapsed_time: session.totalElapsedTime,
       total_timer_time: session.totalTimerTime,
-      start_position_lat: this.convertToSemicircles(session.startPositionLat),
-      start_position_long: this.convertToSemicircles(session.startPositionLong),
+      start_position_lat: session.startPositionLat ? this.convertToSemicircles(session.startPositionLat) : undefined,
+      start_position_long: session.startPositionLong ? this.convertToSemicircles(session.startPositionLong) : undefined,
       total_distance: session.totalDistance,
       total_ascent: session.totalAscent,
       total_descent: session.totalDescent,
@@ -296,19 +296,19 @@ export class FITEncoder {
    */
   private buildLap(lap: LapMesgType): void {
     this.writeMesg("lap", {
-      timestamp: lap.timestamp ? lap.timestamp : undefined,
-      start_time: lap.startTime
+      timestamp: lap?.timestamp ? lap.timestamp : undefined,
+      start_time: lap?.startTime
         ? lap.startTime
         : undefined,
-      start_position_lat: this.convertToSemicircles(lap.startPositionLat),
-      start_position_long: this.convertToSemicircles(lap.startPositionLong),
-      end_position_lat: this.convertToSemicircles(lap.endPositionLat),
-      end_position_long: this.convertToSemicircles(lap.endPositionLong),
-      total_elapsed_time: lap.totalElapsedTime,
-      total_timer_time: lap.totalTimerTime,
-      total_distance: lap.totalDistance,
-      total_ascent: lap.totalAscent,
-      total_descent: lap.totalDescent,
+      start_position_lat: lap?.startPositionLat ? this.convertToSemicircles(lap.startPositionLat) : undefined,
+      start_position_long: lap?.startPositionLong ? this.convertToSemicircles(lap.startPositionLong) : undefined,
+      end_position_lat: lap?.endPositionLat ? this.convertToSemicircles(lap.endPositionLat) : undefined,
+      end_position_long: lap?.endPositionLong ? this.convertToSemicircles(lap.endPositionLong) : undefined,
+      total_elapsed_time: lap?.totalElapsedTime,
+      total_timer_time: lap?.totalTimerTime,
+      total_distance: lap?.totalDistance,
+      total_ascent: lap?.totalAscent,
+      total_descent: lap?.totalDescent,
     });
   }
 
@@ -324,17 +324,16 @@ export class FITEncoder {
    */
   private buildRecord(record: RecordMesgType): void {
     this.writeMesg("record", {
-      timestamp: record.timestamp
-        ? record.timestamp
-        : undefined,
-      position_lat: this.convertToSemicircles(record.positionLat),
-      position_long: this.convertToSemicircles(record.positionLong),
-      altitude: record.enhancedAltitude || record.altitude,
-      distance: record.distance,
-      heart_rate: record.heartRate,
-      cadence: record.cadence,
-      speed: record.enhancedSpeed || record.speed,
-      power: record.power,
+      timestamp: record.timestamp,
+      position_lat: record?.positionLat ? this.convertToSemicircles(record.positionLat) : undefined,
+      position_long: record?.positionLong ? this.convertToSemicircles(record.positionLong) :undefined,
+      altitude: record?.enhancedAltitude || record?.altitude,
+      distance: record?.distance,
+      heart_rate: record?.heartRate,
+      cadence: record?.cadence,
+      speed: record?.enhancedSpeed || record?.speed,
+      power: record?.power,
+      // TODO: add more fields as needed
     });
   }
 

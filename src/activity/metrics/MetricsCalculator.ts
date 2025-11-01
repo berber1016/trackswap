@@ -31,8 +31,6 @@ export class MetricsAggregator {
     let result: MetricsRecordsResult = {
       records: this.preprocessRecords(records),
     };
-    // 累计距离
-    let accDistance = 0;
     for (let i = 0; i < result.records.length; i++) {
       const record = result.records[i];
       // 如果没有位置数据，跳过
@@ -55,6 +53,10 @@ export class MetricsAggregator {
       }
       result.endTime = record.timestamp;
       result.totalDistance = record.distance;
+      result.totalElapsedTime = dayjs(record.timestamp).diff(
+        dayjs(result.startTime),
+        "second"
+      );
 
       // 根据速度计算平均速度和最大速度
       if (record?.speed) {
@@ -193,10 +195,20 @@ export class MetricsAggregator {
       if (lap.totalDistance) {
         result.totalDistance = (result.totalDistance || 0) + lap.totalDistance;
       }
-      // 计算总时间
+      // 计算总时间 圈耗时（含暂停）s
       if (lap.totalElapsedTime) {
         result.totalElapsedTime =
           (result.totalElapsedTime || 0) + lap.totalElapsedTime;
+      }
+      // 圈总移动时间 s
+      if (lap.totalMovingTime) {
+        result.totalMovingTime =
+          (result.totalMovingTime || 0) + lap.totalMovingTime;
+      }
+      // 圈总耗时（不含暂停）s
+      if (lap.totalTimerTime) {
+        result.totalTimerTime =
+          (result.totalTimerTime || 0) + lap.totalTimerTime;
       }
       // 计算最大速度和平均速度
       if (lap.maxSpeed) {

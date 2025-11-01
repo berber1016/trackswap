@@ -17,7 +17,6 @@ import {
 import { semicirclesToDegrees, convertGPXExtensionsMapping } from "../util.js";
 import dayjs from "dayjs";
 import { MetricsAggregator } from "./metrics/MetricsCalculator.js";
-import { Session } from "inspector/promises";
 
 /**
  * Simple mathematical rounding function
@@ -83,7 +82,6 @@ export class GPXToActivityConverter extends BaseActivityConverter {
     const gpxExtensions = extensions
       ? this.convertGPXExtensions(extensions)
       : {};
-
     return {
       index: idx || 0,
       positionLat: point?.lat,
@@ -112,6 +110,7 @@ export class GPXToActivityConverter extends BaseActivityConverter {
     const aggregatedData = new MetricsAggregator().calculateLapAggMetrics(
       laps
     ) as SessionMesgType;
+
     return {
       index: idx,
       messageIndex: idx,
@@ -408,7 +407,6 @@ export class TCXToActivityConverter extends BaseActivityConverter {
 
     const metricsAggregator = new MetricsAggregator();
     const aggregatedData = metricsAggregator.calculateRecordsAggMetrics(points);
-
     return {
       index: idx,
       messageIndex: idx,

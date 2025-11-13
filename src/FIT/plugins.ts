@@ -4,6 +4,7 @@ import {
   FITDecoderMesgs,
   FITFileType,
   FITContext,
+  LengthMesgType,
 } from "./types.js";
 
 /**
@@ -17,7 +18,7 @@ export class SessionStructurePlugin extends BaseFITStructurePlugin {
     messages: FITDecoderMesgs,
     context: FITContext
   ): Partial<FITFileType> {
-    const { sessionMesgs, lapMesgs, recordMesgs } = messages;
+    const { sessionMesgs, lapMesgs, recordMesgs, lengthMesgs } = messages;
 
     if (!sessionMesgs?.length) {
       console.warn("No structured session found, data structure is incomplete");
@@ -50,9 +51,25 @@ export class SessionStructurePlugin extends BaseFITStructurePlugin {
             return recordTime >= lapStartTime && recordTime < lapEndTime;
           }) || [];
 
+        // 获取起点索引
+        const startIndex = lap.firstLengthIndex ?? undefined;
+        const offset = lap.numLengths ?? undefined;
+
+        let lapLengths: LengthMesgType[] = [];
+        if (startIndex !== undefined && offset !== undefined) {
+          const endIndex = startIndex + offset;
+          lapLengths =
+            lengthMesgs?.filter((len) => {
+              return (
+                len.messageIndex >= startIndex && len.messageIndex < endIndex
+              );
+            }) || [];
+        }
         return {
           ...lap,
           recordMesgs: lapRecords,
+          // 仅限游泳
+          lengthMesgs: lapLengths,
           messageIndex: lap.messageIndex !== undefined ? lap.messageIndex : 0, // Ensure messageIndex is a number
         };
       });

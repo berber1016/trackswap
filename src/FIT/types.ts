@@ -16,7 +16,7 @@ export interface FITFileType {
 
 export type FITDecoderMesgs = {
   /**
-   * 
+   *
    */
   fileIdMesgs?: FileIdMesgType[];
   fileCreatorMesgs?: FileCreatorMesgType[];
@@ -31,11 +31,16 @@ export type FITDecoderMesgs = {
   /**
    * Lap 消息数组
    */
-  lapMesgs?: Omit<SessionMesgType, "recordMesgs">[];
+  lapMesgs?: Omit<LapMesgType, "recordMesgs">[];
   /**
    * Record 消息数组
    */
   recordMesgs?: RecordMesgType[];
+
+  /**
+   * Length 消息数组
+   */
+  lengthMesgs?: LengthMesgType[];
   courseMesgs?: any[];
   // Index signature, supports dynamic access
   [key: string]: any[] | undefined;
@@ -606,73 +611,50 @@ export interface SessionMesgType {
 export interface RecordMesgType {
   /** 采样时间戳（UTC） */
   timestamp: Date;
-
   /** 纬度 ° */
   positionLat?: number;
-
   /** 经度 ° */
   positionLong?: number;
-
   /** 海拔 m；enhancedAltitude 优先 */
   altitude?: number;
-
   /** 高精度海拔 m */
   enhancedAltitude?: number;
-
   /** 瞬时心率 bpm */
   heartRate?: number;
-
   /** 步频/踏频 rpm（跑步=spm） */
   cadence?: number;
-
   /** 累计距离 m */
   distance?: number;
-
   /** 速度 m/s；enhancedSpeed 优先 */
   speed?: number;
-
   /** 高精度速度 m/s */
   enhancedSpeed?: number;
-
   /** 瞬时功率 W */
   power?: number;
-
   /** 压缩速距（内部） */
   compressedSpeedDistance?: Uint8Array;
-
   /** 坡度 % */
   grade?: number;
-
   /** 阻力级别 0-100 */
   resistance?: number;
-
   /** 偏离航线时间 s */
   timeFromCourse?: number;
-
   /** 单圈长度 m */
   cycleLength?: number;
-
   /** 环境温度 °C */
   temperature?: number;
-
   /** 1 秒平均速度 m/s */
   speed1s?: number;
-
   /** 单圈圈数 */
   cycles?: number;
-
   /** 总圈数 */
   totalCycles?: number;
-
   /** 压缩累计功率（内部） */
   compressedAccumulatedPower?: number;
-
   /** 累计功率 W */
   accumulatedPower?: number;
-
   /** 左右平衡 %（左 50-右 50） */
   leftRightBalance?: number;
-
   /** GPS 精度 m */
   gpsAccuracy?: number;
 
@@ -855,6 +837,103 @@ export interface RecordMesgType {
 
   /** 核心体温 °C（×100→°C） */
   coreTemperature?: number;
+}
+
+/**
+ * FIT 文件 lengthMesg 消息
+ * 字段顺序与协议保持一致，全部驼峰命名 + 中文注释
+ */
+export interface LengthMesgType {
+  timestamp: Date;
+  messageIndex: number;
+  /**
+   * 事件类型，通常为 length，表示记录的是泳池长度相关数据
+   */
+  event?: string;
+  /**
+   * 事件结束类型，如 stop 表示该趟游泳已经结束
+   */
+  eventType?: string;
+  /**
+   * 该趟游泳的开始时间。
+   */
+  startTime?: Date;
+  /**
+   * 从开始到结束的总经过时间（秒）。
+   */
+  totalElapsedTime?: number;
+  /**
+   * 计时器记录的总时间（秒），通常与 totalElapsedTime 相同
+   */
+  totalTimerTime?: number;
+  /**
+   * 完成该趟游泳的总划水次数
+   */
+  totalStrokes?: number;
+  /**
+   * 平均速度（米/秒）
+   */
+  avgSpeed?: number;
+  /**
+   * 游泳姿势，如蛙泳（breaststroke）、自由泳（freestyle）等
+   */
+  swimStroke?:
+    | "breaststroke"
+    | "freestyle"
+    | "backstroke"
+    | "butterfly"
+    | "drill"
+    | "mixed"
+    | "im"
+    | "invalid";
+  /**
+   * 平均划水频率（次/分钟）
+   */
+  avgSwimmingCadence?: number;
+  /**
+   * 事件组，用于将相关事件分组
+   */
+  eventGroup?: number;
+  /**
+   * 该趟游泳消耗的总卡路里
+   */
+  totalCalories?: number;
+  /**
+   * 长度类型，如 active 表示活动状态，idle 表示空闲状态
+   */
+  lengthType?: "active" | "idle";
+  /**
+   * 玩家得分，通常用于比赛或训练中的计分
+   */
+  playerScore?: number;
+  /**
+   * 对手得分，通常用于比赛或训练中的计分
+   */
+  opponentScore?: number;
+  /**
+   * 	划水次数，与 totalStrokes 类似，但可能更具体
+   */
+  strokeCount?: number;
+  /**
+   * 在特定训练强度区间（如心率区间）中的计数
+   */
+  zoneCount?: number;
+  /**
+   * 更精确的平均呼吸频率（次/分钟）
+   */
+  enhancedAvgRespirationRate?: number;
+  /**
+   * 更精确的最大呼吸频率（次/分钟）
+   */
+  enHancedMaxRespirationRate?: number;
+  /**
+   * 平均呼吸频率（次/分钟）
+   */
+  avgRespirationRate?: number;
+  /**
+   * 最大呼吸频率（次/分钟）
+   */
+  maxRespirationRate?: number;
 }
 
 /**
@@ -1246,6 +1325,9 @@ export interface LapMesgType {
 
   // 关联的 record 数据
   recordMesgs?: RecordMesgType[];
+
+  // 关联的 Length 数据
+  lengthMesgs?: LengthMesgType[];
 }
 
 export interface ActivityMesgType {

@@ -1,5 +1,5 @@
 import { BaseActivityConverter, ActivityContext } from "./base.js";
-import { FileType, TokenAST } from "../types.js";
+import { ActivityLengthType, FileType, TokenAST } from "../types.js";
 import { ActivityType, ActivityRecordType, ActivityLapType } from "../types.js";
 import { GPX11Type, TrksegType, TrkType, WptType } from "../GPX/types.js";
 import {
@@ -142,6 +142,7 @@ export class GPXToActivityConverter extends BaseActivityConverter {
       messageIndex: idx,
       ...aggregatedData,
       records: aggregatedData?.records || [],
+      lengths: [],
     };
   }
   /**
@@ -281,6 +282,11 @@ export class FITToActivityConverter extends BaseActivityConverter {
         lap?.recordMesgs
           ?.map((record, idx) => this.convertPoint(record, idx))
           .filter((point) => point !== undefined) || [];
+      const lengthMesgs: ActivityLengthType[] =
+        lap?.lengthMesgs?.map((length, idx) => ({
+          ...length,
+          index: idx,
+        })) || [];
 
       routeSeg.push({
         index: i,
@@ -298,8 +304,8 @@ export class FITToActivityConverter extends BaseActivityConverter {
         endPositionLong: lap?.endPositionLong
           ? round(semicirclesToDegrees(Number(lap.endPositionLong)), 6)
           : undefined,
-
         records: records,
+        lengths: lengthMesgs,
       });
     }
     return routeSeg;
@@ -412,6 +418,7 @@ export class TCXToActivityConverter extends BaseActivityConverter {
       messageIndex: idx,
       ...aggregatedData,
       records: aggregatedData?.records || [],
+      lengths: [],
     };
   }
 

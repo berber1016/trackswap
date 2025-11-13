@@ -1,4 +1,9 @@
-import { LapMesgType, RecordMesgType, SessionMesgType } from "./FIT/types.js";
+import {
+  LapMesgType,
+  LengthMesgType,
+  RecordMesgType,
+  SessionMesgType,
+} from "./FIT/types.js";
 import { IntensityType } from "./TCX/types.js";
 
 export interface Token {
@@ -139,6 +144,10 @@ export interface ActivityRecordType extends RecordMesgType {
   description?: number;
 }
 
+export interface ActivityLengthType extends LengthMesgType {
+  // 记录索引
+  index: number;
+}
 /**
  * Segments & fit(lap) & tcx(lap)
  */
@@ -152,4 +161,5 @@ export interface ActivityLapType extends LapMesgType {
    */
   endTime?: Date;
   records: ActivityRecordType[];
+  lengths: ActivityLengthType[];
 }

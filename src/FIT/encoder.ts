@@ -327,11 +327,13 @@ export class FITEncoder {
       timestamp: record.timestamp,
       position_lat: record?.positionLat ? this.convertToSemicircles(record.positionLat) : undefined,
       position_long: record?.positionLong ? this.convertToSemicircles(record.positionLong) :undefined,
-      altitude: record?.enhancedAltitude || record?.altitude,
+      altitude: record?.altitude,
+      enhancedAltitude: record?.enhancedAltitude,
       distance: record?.distance,
       heart_rate: record?.heartRate,
       cadence: record?.cadence,
-      speed: record?.enhancedSpeed || record?.speed,
+      speed: record?.speed,
+      enhancedSpeed: record?.enhancedSpeed,
       power: record?.power,
       // TODO: add more fields as needed
     });

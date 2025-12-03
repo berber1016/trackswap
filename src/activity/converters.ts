@@ -263,8 +263,10 @@ export class FITToActivityConverter extends BaseActivityConverter {
       positionLong: positionLong
         ? round(semicirclesToDegrees(Number(positionLong)), 6)
         : undefined,
-      altitude: altitude || enhancedAltitude || undefined,
-      speed: speed || enhancedSpeed || undefined,
+      altitude: altitude || undefined,
+      enhancedAltitude: enhancedAltitude || undefined,
+      speed: speed || undefined,
+      enhancedSpeed: enhancedSpeed || undefined,
       ...rest,
     };
   }

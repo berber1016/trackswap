@@ -77,12 +77,17 @@ export class GPXToActivityConverter extends BaseActivityConverter {
    * @param idx
    * @returns
    */
-  protected convertPoint(point: WptType, idx?: number): ActivityRecordType {
+  protected convertPoint(
+    point: WptType,
+    idx?: number,
+    lapIdx?: number
+  ): ActivityRecordType {
     const { extensions } = point;
     const gpxExtensions = extensions
       ? this.convertGPXExtensions(extensions)
       : {};
     return {
+      lapIndex: lapIdx || 0,
       index: idx || 0,
       positionLat: point?.lat,
       positionLong: point?.lon,
@@ -131,7 +136,7 @@ export class GPXToActivityConverter extends BaseActivityConverter {
           (point: WptType | undefined) => point !== undefined && point.time
         )
         ?.map((trkpt: WptType, ptIdx: number) =>
-          this.convertPoint(trkpt, ptIdx)
+          this.convertPoint(trkpt, ptIdx, idx)
         ) || [];
 
     const metricsAggregator = new MetricsAggregator();
@@ -243,7 +248,8 @@ export class FITToActivityConverter extends BaseActivityConverter {
    */
   protected convertPoint(
     point: RecordMesgType,
-    idx?: number
+    idx?: number,
+    lapIdx?: number
   ): ActivityRecordType | undefined {
     const {
       positionLong,
@@ -256,6 +262,7 @@ export class FITToActivityConverter extends BaseActivityConverter {
     } = point;
 
     return {
+      lapIndex: lapIdx || 0,
       index: idx || 0,
       positionLat: positionLat
         ? round(semicirclesToDegrees(Number(positionLat)), 6)
@@ -282,7 +289,7 @@ export class FITToActivityConverter extends BaseActivityConverter {
       const lap = laps[i];
       const records =
         lap?.recordMesgs
-          ?.map((record, idx) => this.convertPoint(record, idx))
+          ?.map((record, idx) => this.convertPoint(record, idx, i))
           .filter((point) => point !== undefined) || [];
       const lengthMesgs: ActivityLengthType[] =
         lap?.lengthMesgs?.map((length, idx) => ({
@@ -317,10 +324,11 @@ export class FITToActivityConverter extends BaseActivityConverter {
     let res: ActivityRecordType[] = [];
     if (!laps?.length) return [];
 
-    for (const lap of laps) {
+    for (let i = 0; i < laps.length; i++) {
+      const lap = laps[i];
       const points =
         lap.recordMesgs
-          ?.map((record, idx) => this.convertPoint(record, idx))
+          ?.map((record, idx) => this.convertPoint(record, idx, i))
           .filter(
             (point): point is ActivityRecordType => point !== undefined
           ) || [];
@@ -426,11 +434,13 @@ export class TCXToActivityConverter extends BaseActivityConverter {
 
   protected convertPoint(
     point: TrackpointType,
-    idx?: number
+    idx?: number,
+    lapIdx?: number
   ): ActivityRecordType {
     const { Position, Time, DistanceMeters, AltitudeMeters } = point;
 
     return {
+      lapIndex: lapIdx || 0,
       index: idx || 0,
       positionLat: Position?.LatitudeDegrees
         ? Number(Position!.LatitudeDegrees)

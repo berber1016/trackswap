@@ -117,6 +117,10 @@ export interface ActivityType extends SessionMesgType {
  */
 export interface ActivityRecordType extends RecordMesgType {
   /**
+   *  lap 索引
+   */
+  lapIndex: number;
+  /**
    * 记录索引
    */
   index: number;

@@ -49,3 +49,7 @@ test/
 tests/
 *.test.js
 *.spec.js 
+
+# Temporary directories
+.tmp*/
+.tmp-*/

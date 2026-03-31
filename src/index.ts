@@ -1,5 +1,14 @@
 export * from "./types.js";
-export { FITDecoder, FITEncoder } from "./FIT/index.js";
+export {
+  FITDecoder,
+  FITEncoder,
+  encodeCourse,
+  buildCourseMesgs,
+  type CoursePlan,
+  type CourseRecordPoint,
+  type CourseCuePoint,
+  type CourseFitMesg,
+} from "./FIT/index.js";
 export {
   GPXDecoder,
   GPXEncoder,

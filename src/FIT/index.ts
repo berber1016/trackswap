@@ -21,6 +21,14 @@ export {
 
 // ============ Type Definitions ============
 export * from "./types.js";
+export {
+  encodeCourse,
+  buildCourseMesgs,
+  type CoursePlan,
+  type CourseRecordPoint,
+  type CourseCuePoint,
+  type FitMesg as CourseFitMesg,
+} from "./encoderCourse.js";
 
 // ============ Default Export ============
 import { FITDecoder } from "./decoder.js";

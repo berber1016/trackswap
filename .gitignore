@@ -16,3 +16,7 @@
 
 package-lock.json
 PUBLISH.md
+
+# Temporary directories
+.tmp*/
+.tmp-*/

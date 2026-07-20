@@ -18,6 +18,25 @@ export {
   CourseStructurePlugin,
   FileHeaderPlugin,
 } from "./plugins.js";
+export {
+  HealthStructurePlugin,
+  buildHealthDocumentFromMessages,
+  detectFITKinds,
+  TRACKSWAP_HEALTH_PARSER_VERSION,
+} from "./health.js";
+export type {
+  FITDocumentParseOptions,
+  FITPrimaryKind,
+  FITDiagnosticsV1,
+  HealthDocumentV1,
+  HealthIntervalV1,
+  HealthMetricCode,
+  HealthPointV1,
+  HealthSessionSegmentV1,
+  HealthSessionV1,
+  HealthSummaryV1,
+  HealthValueStatus,
+} from "./health.js";
 
 // ============ Type Definitions ============
 export * from "./types.js";

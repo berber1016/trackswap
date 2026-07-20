@@ -42,7 +42,6 @@ export class TokenizeProcessor implements IPipelineProcessor {
     if (tokens.length === 0) {
       throw new Error("Not a valid TCX file");
     }
-    console.log("解析到 TOKENS", tokens);
     context.tokens = tokens;
     context.stats.processedTokens = tokens.length;
 

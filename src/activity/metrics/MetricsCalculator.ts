@@ -34,14 +34,19 @@ export class MetricsAggregator {
     for (let i = 0; i < result.records.length; i++) {
       const record = result.records[i];
       // 如果没有位置数据，跳过
-      if (!record.positionLat || !record.positionLong) {
+      if (
+        record.positionLat == null ||
+        record.positionLong == null ||
+        !Number.isFinite(record.positionLat) ||
+        !Number.isFinite(record.positionLong)
+      ) {
         continue;
       }
       // 设定起始点和结束点
-      if (!result?.startPositionLat) {
+      if (result.startPositionLat == null) {
         result.startPositionLat = record.positionLat;
       }
-      if (!result?.startPositionLong) {
+      if (result.startPositionLong == null) {
         result.startPositionLong = record.positionLong;
       }
       result.endPositionLat = record.positionLat;
@@ -384,10 +389,14 @@ export class MetricsAggregator {
     currPoint: ActivityRecordType
   ): number | undefined {
     if (
-      !prevPoint.positionLat ||
-      !prevPoint.positionLong ||
-      !currPoint.positionLat ||
-      !currPoint.positionLong
+      prevPoint.positionLat == null ||
+      prevPoint.positionLong == null ||
+      currPoint.positionLat == null ||
+      currPoint.positionLong == null ||
+      !Number.isFinite(prevPoint.positionLat) ||
+      !Number.isFinite(prevPoint.positionLong) ||
+      !Number.isFinite(currPoint.positionLat) ||
+      !Number.isFinite(currPoint.positionLong)
     ) {
       return undefined;
     }
@@ -399,8 +408,7 @@ export class MetricsAggregator {
         { latitude: prevPoint.positionLat, longitude: prevPoint.positionLong },
         { latitude: currPoint.positionLat, longitude: currPoint.positionLong }
       );
-    } catch (error) {
-      console.warn("Distance calculation failed:", error);
+    } catch {
       return undefined;
     }
   }

@@ -244,10 +244,26 @@ export class GPXEncoder {
       return "";
     }
 
+    const lat = point.lat;
+    const lon = point.lon;
+    const latOk =
+      typeof lat === "number" &&
+      Number.isFinite(lat) &&
+      lat >= -90 &&
+      lat <= 90;
+    const lonOk =
+      typeof lon === "number" &&
+      Number.isFinite(lon) &&
+      lon >= -180 &&
+      lon <= 180;
+    if (!latOk || !lonOk) {
+      return "";
+    }
+
     const parts: string[] = [
       `<${tagName} lat="${this.escapeXMLAttribute(
-        point.lat ? this.formatCoordinate(point.lat) : ""
-      )}" lon="${this.escapeXMLAttribute(point.lon ? this.formatCoordinate(point.lon) : "")}">`,
+        this.formatCoordinate(lat)
+      )}" lon="${this.escapeXMLAttribute(this.formatCoordinate(lon))}">`,
     ];
 
     // Basic attributes

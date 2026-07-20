@@ -26,7 +26,9 @@ export class WptConverter extends BaseGPXConverter {
 
   convert(ast: TokenAST, context: DecoderContext): WptType | undefined {
     if (!this.hasRequiredAttributes(ast, ["lat", "lon"])) {
-      console.error(`${this.name}: Missing required lat or lon attribute`);
+      context.warnings.push(
+        `${this.name}: point without latitude or longitude was ignored`
+      );
       return undefined;
     }
     const wpt: WptType = {

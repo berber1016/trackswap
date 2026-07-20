@@ -49,15 +49,32 @@ export class ActivityToGPXEncoder extends BaseActivityEncoder {
     context: ActivityEncodingContext
   ): GPX11Type | undefined {
     if (context.targetFormat !== "gpx") return undefined;
-    if (!file?.activities?.length) return undefined;
+    if (
+      !file?.activities?.length &&
+      !file?.routes?.length &&
+      !file?.points?.length
+    ) {
+      return undefined;
+    }
 
-    const firstActivity = file.activities?.[0]; // Use first activity
+    const metaTime =
+      file.activities?.[0]?.timestamp ??
+      file.routes?.[0]?.records?.[0]?.timestamp ??
+      file.points?.[0]?.timestamp ??
+      new Date();
+
+    const omittedNoCoords = this.countRecordsMissingGpxCoordinates(file);
 
     const gpx: GPX11Type = {
       version: "1.1",
       creator: "TrackSwap",
       metadata: {
-        time: firstActivity.timestamp,
+        time: metaTime,
+        ...(omittedNoCoords > 0
+          ? {
+              desc: `TrackSwap: omitted ${omittedNoCoords} trackpoint(s) without valid latitude/longitude.`,
+            }
+          : {}),
       },
     };
 
@@ -71,7 +88,7 @@ export class ActivityToGPXEncoder extends BaseActivityEncoder {
       gpx.rte = file.routes.map((route) => this.convertRoute2GPXRoute(route));
     }
 
-    // Convert tracks
+    // Convert tracks（无 Activity 时可为空）
     if (file.activities?.length) {
       gpx.trk = file.activities.map((activity) =>
         this.convertActivity2GPXTrack(activity)
@@ -81,25 +98,65 @@ export class ActivityToGPXEncoder extends BaseActivityEncoder {
     return gpx;
   }
 
+  /** GPX trkpt/wpt/rtept require finite coordinates in range. */
+  private hasValidGpxCoordinates(point: ActivityRecordType): boolean {
+    const lat = point.positionLat;
+    const lon = point.positionLong;
+    return (
+      typeof lat === "number" &&
+      typeof lon === "number" &&
+      Number.isFinite(lat) &&
+      Number.isFinite(lon) &&
+      lat >= -90 &&
+      lat <= 90 &&
+      lon >= -180 &&
+      lon <= 180
+    );
+  }
+
+  /** Count sample rows that have time but no usable lat/lon for GPX geometry. */
+  private countRecordsMissingGpxCoordinates(file: FileType): number {
+    let n = 0;
+    const tally = (records?: ActivityRecordType[]) => {
+      for (const r of records ?? []) {
+        if (r?.timestamp == null) continue;
+        if (!this.hasValidGpxCoordinates(r)) n++;
+      }
+    };
+    tally(file.points);
+    for (const act of file.activities ?? []) {
+      for (const lap of act.laps ?? []) {
+        tally(lap.records);
+      }
+    }
+    for (const route of file.routes ?? []) {
+      tally(route.records);
+    }
+    return n;
+  }
+
   /**
    * 将 ActivityPoint 转为 GPX 的 WPT Type 与 GPX1.1 映射
    * @param points
    * @return gpx
    */
   private convertRecords2Wpts(points: ActivityRecordType[]): WptType[] {
-    return points
-      ?.filter((v) => v.timestamp)
-      .map((point) => ({
-        lat: point?.positionLat,
-        lon: point?.positionLong,
-        ele: point?.altitude,
-        time: point?.timestamp,
-        speed: point?.speed,
-        hdop: point?.hdop,
-        vdop: point?.vdop,
-        pdop: point?.pdop,
-        extensions: this.extractGPXExtensions(point),
-      }));
+    return (
+      points
+        ?.filter((v) => v.timestamp)
+        ?.filter((v) => this.hasValidGpxCoordinates(v))
+        .map((point) => ({
+          lat: point?.positionLat,
+          lon: point?.positionLong,
+          ele: point?.altitude,
+          time: point?.timestamp,
+          speed: point?.speed,
+          hdop: point?.hdop,
+          vdop: point?.vdop,
+          pdop: point?.pdop,
+          extensions: this.extractGPXExtensions(point),
+        })) ?? []
+    );
   }
 
   private convertRoute2GPXRoute(route: ActivityLapType): RteType {
@@ -171,18 +228,62 @@ export class ActivityToFITEncoder extends BaseActivityEncoder {
     context: ActivityEncodingContext
   ): FITFileType | undefined {
     if (context.targetFormat !== "fit") return undefined;
-    if (!file?.activities?.length) return undefined;
-    const fit: FITFileType = {};
-    // TODO: 解析 routes
-    // fit.courseMesgs = file.routes?.map((route) =>
-    //   this.convertRoute2FITCourse(route)
-    // );
-    // Convert activity to sessionMesg
-    fit.sessionMesgs = file.activities?.map((activity) =>
-      this.convertActivity2FITSession(activity)
-    );
 
-    return fit;
+    if (file?.activities?.length) {
+      const fit: FITFileType = {};
+      fit.sessionMesgs = file.activities.map((activity) =>
+        this.convertActivity2FITSession(activity)
+      );
+      return fit;
+    }
+
+    if (file?.routes?.length) {
+      const fit: FITFileType = {};
+      fit.sessionMesgs = [this.convertRoutesToSyntheticSession(file.routes)];
+      return fit;
+    }
+
+    return undefined;
+  }
+
+  /**
+   * 仅含路线（无 session 活动）时，合成单 session + 多 lap，供活动型 FIT 编码器写入。
+   */
+  private convertRoutesToSyntheticSession(
+    routes: ActivityLapType[]
+  ): SessionMesgType {
+    const lapMesgs = routes.map((lap) => this.convertLap2FITLap(lap));
+    const all = routes.flatMap((r) => r.records ?? []);
+    const withTime = all
+      .filter(
+        (r): r is ActivityRecordType & { timestamp: Date } =>
+          r.timestamp != null
+      )
+      .sort(
+        (a, b) =>
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      );
+    const start = withTime[0]?.timestamp ?? new Date();
+    const end = withTime[withTime.length - 1]?.timestamp ?? start;
+    const firstCoord = withTime.find(
+      (r) =>
+        r.positionLat != null &&
+        r.positionLong != null &&
+        Number.isFinite(r.positionLat) &&
+        Number.isFinite(r.positionLong)
+    );
+    return {
+      messageIndex: 0,
+      timestamp: end,
+      event: "session",
+      eventType: "stop",
+      startTime: start,
+      startPositionLat: firstCoord?.positionLat,
+      startPositionLong: firstCoord?.positionLong,
+      sport: "generic",
+      subSport: "generic",
+      lapMesgs,
+    };
   }
 
   private convertActivity2FITSession(activity: ActivityType): SessionMesgType {
@@ -257,40 +358,65 @@ export class ActivityToTCXEncoder extends BaseActivityEncoder {
     context: ActivityEncodingContext
   ): TCXFileType | undefined {
     if (context.targetFormat !== "tcx") return undefined;
-    if (!file?.activities?.length) return undefined;
+    const hasActivities = !!file?.activities?.length;
+    const hasRoutes = !!file?.routes?.length;
+    if (!hasActivities && !hasRoutes) return undefined;
 
     const tcx: TCXFileType = {
+      version: "1.0",
       Author: {
         Name: "TrackSwap",
       },
     };
 
-    // Convert activity to TCX Activity
-    tcx.Activities = {
-      Activity: file.activities.map((activity) =>
-        this.convertActivity2TCXActivity(activity)
-      ),
-    };
+    if (hasActivities) {
+      tcx.Activities = {
+        Activity: file.activities!.map((activity) =>
+          this.convertActivity2TCXActivity(activity)
+        ),
+      };
+    }
+
+    if (hasRoutes) {
+      tcx.Courses = {
+        Course: file.routes!.map((route, index) =>
+          this.convertRouteToTCXCourse(route, index)
+        ),
+      };
+    }
 
     return tcx;
   }
 
   private convertActivity2TCXActivity(activity: ActivityType): TCXActivityType {
-    // Ensure Activity field is the correct type
-    let sport: "Other" | "Running" | "Biking" = "Other";
-    if (activity.sport === "Running" || activity.sport === "Biking") {
-      sport = activity.sport as "Running" | "Biking";
+    if (!activity.laps?.length) {
+      throw new Error("Cannot encode a TCX activity without laps");
     }
+    let sport: "Other" | "Running" | "Biking" = "Other";
+    const normalizedSport = activity.sport?.toLowerCase();
+    if (normalizedSport === "running") sport = "Running";
+    if (normalizedSport === "biking" || normalizedSport === "cycling") {
+      sport = "Biking";
+    }
+    const id = this.validTimestamp(
+      activity.startTime ??
+        activity.laps[0]?.startTime ??
+        activity.laps[0]?.records?.[0]?.timestamp
+    );
 
     return {
-      Id: `Activity_${Date.now()}`,
-      Activity: sport,
-      Lap: activity.laps?.map((lap) => this.convertLap2TCXLap(lap)) || [],
+      Id: id,
+      Sport: sport,
+      Lap: activity.laps.map((lap) => this.convertLap2TCXLap(lap)),
     };
   }
 
   private convertLap2TCXLap(lap: ActivityLapType): TCXActivityLapType {
+    const startTime = this.validTimestamp(
+      lap.startTime ?? lap.records?.[0]?.timestamp
+    );
     const tcxLap: TCXActivityLapType = {
+      StartTime: startTime,
       TotalTimeSeconds: lap.totalElapsedTime,
       DistanceMeters: lap.totalDistance,
       MaximumSpeed: lap.maxSpeed,
@@ -330,7 +456,7 @@ export class ActivityToTCXEncoder extends BaseActivityEncoder {
     point: ActivityRecordType
   ): TrackpointType {
     const trackpoint: TrackpointType = {
-      Time: dayjs(point.timestamp).toISOString(),
+      Time: this.validTimestamp(point.timestamp),
       Position: {
         LatitudeDegrees: point?.positionLat?.toString(),
         LongitudeDegrees: point?.positionLong?.toString(),
@@ -364,9 +490,20 @@ export class ActivityToTCXEncoder extends BaseActivityEncoder {
     return trackpoint;
   }
 
-  private convertRoute2TCXCourse(route: ActivityLapType): CourseType {
+  private validTimestamp(value: Date | string | number | undefined): string {
+    const timestamp = dayjs(value);
+    if (!value || !timestamp.isValid()) {
+      throw new Error("Cannot encode TCX data without valid timestamps");
+    }
+    return timestamp.toISOString();
+  }
+
+  private convertRouteToTCXCourse(
+    route: ActivityLapType,
+    index: number
+  ): CourseType {
     return {
-      Name: `Course_${Date.now()}`,
+      Name: route.routeName ?? `Course_${index}`,
       Track: route.records ? [this.convertRecords2TCXTrack(route.records)] : [],
     };
   }

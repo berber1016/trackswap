@@ -85,7 +85,6 @@ export abstract class BaseGPXMiddleware
   // GPX specific middleware logic can be added here
 
   async onError(error: Error, context: DecoderContext): Promise<void> {
-    console.error(`GPX middleware ${this.name} processing error:`, error);
     context.warnings.push(`Middleware ${this.name} error: ${error.message}`);
   }
 }

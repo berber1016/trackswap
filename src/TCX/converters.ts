@@ -149,7 +149,7 @@ export class ActivityLapConverter extends BaseTCXConverter {
 
     // Extract attributes
     this.extractAttributes(ast, lap, {
-      StartTime: "Id" as any,
+      StartTime: "StartTime",
     });
 
     this.processChildren(ast, lap, {
@@ -204,7 +204,7 @@ export class ActivityConverter extends BaseTCXConverter {
 
     // Extract attributes
     this.extractAttributes(ast, activity, {
-      Activity: "Activity" as any,
+      Sport: "Sport",
     });
 
     this.processChildren(ast, activity, {

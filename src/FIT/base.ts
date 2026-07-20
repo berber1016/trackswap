@@ -199,6 +199,6 @@ export abstract class BaseFITMiddleware implements IFITMiddlewarePlugin {
   }
 
   async onError(error: Error, context: FITContext): Promise<void> {
-    console.error(`FIT middleware ${this.name} processing error:`, error);
+    context.warnings.push(`FIT middleware ${this.name}: ${error.message}`);
   }
 }

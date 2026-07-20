@@ -12,6 +12,11 @@ export interface FITFileType {
   userProfileMesgs?: UserProfileMesgType[];
   sessionMesgs?: SessionMesgType[];
   courseMesgs?: any[];
+  healthDocument?: import("./health.js").HealthDocumentV1;
+  fitDocumentMetadata?: {
+    detectedKinds: import("./health.js").FITPrimaryKind[];
+    messageCounts: Record<string, number>;
+  };
 }
 
 export type FITDecoderMesgs = {
@@ -610,7 +615,7 @@ export interface SessionMesgType {
  */
 export interface RecordMesgType {
   /** 采样时间戳（UTC） */
-  timestamp: Date;
+  timestamp?: Date;
   /** 纬度 ° */
   positionLat?: number;
   /** 经度 ° */

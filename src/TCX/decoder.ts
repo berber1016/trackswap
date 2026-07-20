@@ -48,9 +48,6 @@ export class TCXDecoder {
       new CompleteProcessor(),
     ];
 
-    console.log(
-      "🔧 TCX core pipeline processors initialized (fixed and not modifiable)"
-    );
   }
 
   /**
@@ -80,9 +77,6 @@ export class TCXDecoder {
     }
 
     this.defaultConvertersRegistered = true;
-    console.log(
-      "✅ Default TCX converters auto-registered (Activities, Position, Track, etc.)"
-    );
   }
 
   /**
@@ -118,25 +112,6 @@ export class TCXDecoder {
     });
     this.registeredPlugins.add(plugin.name);
 
-    // Show priority information
-    const priorityInfo =
-      plugin.priority !== undefined ? ` (priority: ${plugin.priority})` : "";
-    console.log(
-      `📦 Registered custom TCX converter: ${
-        plugin.name
-      }${priorityInfo}, supported tags: ${plugin.supportedTags?.join(", ")}`
-    );
-
-    // Show converter priority order for tags
-    plugin.supportedTags?.forEach((tag) => {
-      const converters = this.converterPlugins.get(tag) || [];
-      const converterNames = converters.map(
-        (c) => `${c.name}(${c.priority || 100})`
-      );
-      console.log(
-        `   📋 Tag "${tag}" converter priority: ${converterNames.join(" > ")}`
-      );
-    });
   }
 
   /**
@@ -148,22 +123,8 @@ export class TCXDecoder {
     );
     if (existingIndex !== -1) {
       this.middlewarePlugins[existingIndex] = plugin;
-      console.log(`🔄 Updated TCX middleware: ${plugin.name}`);
     } else {
       this.middlewarePlugins.push(plugin);
-      console.log(`🔌 Registered TCX middleware: ${plugin.name}`);
-    }
-
-    // Show supported hooks for middleware
-    const hooks = [];
-    if (plugin.onTokenize) hooks.push("onTokenize");
-    if (plugin.onAstGenerate) hooks.push("onAstGenerate");
-    if (plugin.onConvert) hooks.push("onConvert");
-    if (plugin.onComplete) hooks.push("onComplete");
-    if (plugin.onError) hooks.push("onError");
-
-    if (hooks.length > 0) {
-      console.log(`   🎣 Supported hooks: ${hooks.join(", ")}`);
     }
   }
 
@@ -205,12 +166,10 @@ export class TCXDecoder {
     }
 
     if (!pluginToRemove) {
-      console.warn(`TCX converter plugin ${pluginName} does not exist`);
       return;
     }
 
     this.registeredPlugins.delete(pluginName);
-    console.log(`🗑️ Removed TCX converter: ${pluginName}`);
   }
 
   /**
@@ -220,9 +179,6 @@ export class TCXDecoder {
     const index = this.middlewarePlugins.findIndex((p) => p.name === name);
     if (index !== -1) {
       this.middlewarePlugins.splice(index, 1);
-      console.log(`🗑️ Removed TCX middleware: ${name}`);
-    } else {
-      console.warn(`TCX middleware ${name} does not exist`);
     }
   }
 
@@ -239,19 +195,16 @@ export class TCXDecoder {
 
     // Initialize all plugins
     const allPlugins = [
-      ...Array.from(this.converterPlugins.values()).flat(),
-      ...this.middlewarePlugins,
+      ...new Map(
+        [
+          ...Array.from(this.converterPlugins.values()).flat(),
+          ...this.middlewarePlugins,
+        ].map((plugin) => [plugin.name, plugin] as const)
+      ).values(),
     ];
 
     for (const plugin of allPlugins) {
-      try {
-        await plugin.initialize?.(context);
-      } catch (error) {
-        console.error(
-          `TCX plugin ${plugin.name} initialization failed:`,
-          error
-        );
-      }
+      await plugin.initialize?.(context);
     }
 
     this.initialized = true;
@@ -267,16 +220,16 @@ export class TCXDecoder {
 
     // Destroy all plugins
     const allPlugins = [
-      ...Array.from(this.converterPlugins.values()).flat(),
-      ...this.middlewarePlugins,
+      ...new Map(
+        [
+          ...Array.from(this.converterPlugins.values()).flat(),
+          ...this.middlewarePlugins,
+        ].map((plugin) => [plugin.name, plugin] as const)
+      ).values(),
     ];
 
     for (const plugin of allPlugins) {
-      try {
-        await plugin.destroy?.(context);
-      } catch (error) {
-        console.error(`TCX plugin ${plugin.name} destruction failed:`, error);
-      }
+      await plugin.destroy?.(context);
     }
 
     this.initialized = false;
@@ -338,15 +291,12 @@ export class TCXDecoder {
     // Pass decoder instance reference in context
     context.metadata.set("decoder", this);
 
-    try {
-      // Fixed pipeline stage sequential execution
-      for (const processor of this.processors) {
-        try {
-          // 1. Execute core processor
-          context = await processor.process(context);
+    for (const processor of this.processors) {
+      try {
+        context = await processor.process(context);
 
           // 2. Execute corresponding middleware hooks based on stage
-          switch (processor.stage) {
+        switch (processor.stage) {
             case TCXPipelineStage.TOKENIZE:
               if (context.tokens) {
                 context.tokens = await this.executeMiddlewareHook(
@@ -386,27 +336,21 @@ export class TCXDecoder {
                 );
               }
               break;
-          }
-        } catch (error) {
-          context.errors.push(error as Error);
-
-          // Execute error handling middleware
-          for (const middleware of this.middlewarePlugins) {
-            await middleware.onError?.(error as Error, context);
-          }
-
-          console.error(
-            `TCX pipeline stage ${processor.stage} processing failed:`,
-            error
-          );
         }
+      } catch (error) {
+        context.errors.push(error as Error);
+        for (const middleware of this.middlewarePlugins) {
+          await middleware.onError?.(error as Error, context);
+        }
+        throw new Error(
+          `TCX pipeline stage "${processor.stage}" failed: ${
+            (error as Error).message
+          }`
+        );
       }
-
-      return context.result;
-    } catch (error) {
-      console.error("TCX parsing failed:", error);
-      throw error;
     }
+
+    return context.result;
   }
 
   /**

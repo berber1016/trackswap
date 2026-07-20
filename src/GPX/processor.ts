@@ -137,6 +137,11 @@ export class ConvertProcessor implements IPipelineProcessor {
     if (!context.ast) {
       throw new Error("AST cannot be empty");
     }
+    if (context.ast.tag !== "gpx") {
+      throw new Error(
+        `Not a valid GPX document: expected <gpx>, received <${context.ast.tag}>`
+      );
+    }
 
     const gpx: GPX11Type = {};
 
@@ -157,7 +162,10 @@ export class ConvertProcessor implements IPipelineProcessor {
     context.ast.children?.forEach((child) => {
       const converter = this.getConverter(child.tag);
       if (!converter) {
-        console.error(`Tag ${child.tag} has no corresponding converter`);
+        context.warnings.push(
+          `Unsupported GPX element "${child.tag}" was ignored`
+        );
+        return;
       }
       try {
         const result = converter.convert(child, context);
@@ -166,9 +174,10 @@ export class ConvertProcessor implements IPipelineProcessor {
         }
       } catch (error) {
         context.errors.push(error as Error);
-        console.error(
-          `Converter ${converter.name} failed processing tag ${child.tag}:`,
-          error
+        throw new Error(
+          `GPX converter "${converter.name}" failed for ${child.tag}: ${
+            (error as Error).message
+          }`
         );
       }
     });

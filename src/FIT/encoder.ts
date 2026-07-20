@@ -271,8 +271,16 @@ export class FITEncoder {
         : undefined,
       total_elapsed_time: session.totalElapsedTime,
       total_timer_time: session.totalTimerTime,
-      start_position_lat: session.startPositionLat ? this.convertToSemicircles(session.startPositionLat) : undefined,
-      start_position_long: session.startPositionLong ? this.convertToSemicircles(session.startPositionLong) : undefined,
+      start_position_lat:
+        session.startPositionLat != null &&
+        Number.isFinite(session.startPositionLat)
+          ? this.convertToSemicircles(session.startPositionLat)
+          : undefined,
+      start_position_long:
+        session.startPositionLong != null &&
+        Number.isFinite(session.startPositionLong)
+          ? this.convertToSemicircles(session.startPositionLong)
+          : undefined,
       total_distance: session.totalDistance,
       total_ascent: session.totalAscent,
       total_descent: session.totalDescent,
@@ -300,10 +308,22 @@ export class FITEncoder {
       start_time: lap?.startTime
         ? lap.startTime
         : undefined,
-      start_position_lat: lap?.startPositionLat ? this.convertToSemicircles(lap.startPositionLat) : undefined,
-      start_position_long: lap?.startPositionLong ? this.convertToSemicircles(lap.startPositionLong) : undefined,
-      end_position_lat: lap?.endPositionLat ? this.convertToSemicircles(lap.endPositionLat) : undefined,
-      end_position_long: lap?.endPositionLong ? this.convertToSemicircles(lap.endPositionLong) : undefined,
+      start_position_lat:
+        lap?.startPositionLat != null && Number.isFinite(lap.startPositionLat)
+          ? this.convertToSemicircles(lap.startPositionLat)
+          : undefined,
+      start_position_long:
+        lap?.startPositionLong != null && Number.isFinite(lap.startPositionLong)
+          ? this.convertToSemicircles(lap.startPositionLong)
+          : undefined,
+      end_position_lat:
+        lap?.endPositionLat != null && Number.isFinite(lap.endPositionLat)
+          ? this.convertToSemicircles(lap.endPositionLat)
+          : undefined,
+      end_position_long:
+        lap?.endPositionLong != null && Number.isFinite(lap.endPositionLong)
+          ? this.convertToSemicircles(lap.endPositionLong)
+          : undefined,
       total_elapsed_time: lap?.totalElapsedTime,
       total_timer_time: lap?.totalTimerTime,
       total_distance: lap?.totalDistance,
@@ -325,8 +345,14 @@ export class FITEncoder {
   private buildRecord(record: RecordMesgType): void {
     this.writeMesg("record", {
       timestamp: record.timestamp,
-      position_lat: record?.positionLat ? this.convertToSemicircles(record.positionLat) : undefined,
-      position_long: record?.positionLong ? this.convertToSemicircles(record.positionLong) :undefined,
+      position_lat:
+        record?.positionLat != null && Number.isFinite(record.positionLat)
+          ? this.convertToSemicircles(record.positionLat)
+          : undefined,
+      position_long:
+        record?.positionLong != null && Number.isFinite(record.positionLong)
+          ? this.convertToSemicircles(record.positionLong)
+          : undefined,
       altitude: record?.altitude,
       enhancedAltitude: record?.enhancedAltitude,
       distance: record?.distance,
@@ -450,6 +476,7 @@ export class FITEncoder {
    */
   private convertToSemicircles(coord?: number): number | undefined {
     if (coord === undefined || coord === null) return undefined;
+    if (!Number.isFinite(coord)) return undefined;
     return Math.round((coord * 2 ** 31) / 180);
   }
 
@@ -545,7 +572,6 @@ export class FITEncoder {
    * @deprecated Use encode() instead
    */
   async encoder(fitData: FITFileType): Promise<Buffer> {
-    console.warn("encoder() method is deprecated, please use encode() method");
     return this.encode(fitData);
   }
 }

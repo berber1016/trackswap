@@ -188,7 +188,6 @@ export abstract class BaseActivityMiddleware
   abstract process(context: ActivityContext): Promise<void>;
 
   async onError(error: Error, context: ActivityContext): Promise<void> {
-    console.error(`Activity middleware ${this.name} processing error:`, error);
     context.warnings.push(`Middleware ${this.name} error: ${error.message}`);
   }
 

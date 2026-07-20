@@ -52,9 +52,6 @@ export class GPXDecoder {
       new CompleteProcessor(),
     ];
 
-    console.log(
-      "🔧 Core pipeline processors initialized (fixed and not modifiable)"
-    );
   }
 
   /**
@@ -86,9 +83,6 @@ export class GPXDecoder {
     }
 
     this.defaultConvertersRegistered = true;
-    console.log(
-      "✅ Default GPX converters auto-registered (wpt, rte, trk, metadata, etc.)"
-    );
   }
 
   /**
@@ -124,25 +118,6 @@ export class GPXDecoder {
     });
     this.registeredPlugins.add(plugin.name);
 
-    // Show priority information
-    const priorityInfo =
-      plugin.priority !== undefined ? ` (priority: ${plugin.priority})` : "";
-    console.log(
-      `📦 Registered custom converter: ${
-        plugin.name
-      }${priorityInfo}, supported tags: ${plugin.supportedTags?.join(", ")}`
-    );
-
-    // Show converter priority order for tags
-    plugin.supportedTags?.forEach((tag) => {
-      const converters = this.converterPlugins.get(tag) || [];
-      const converterNames = converters.map(
-        (c) => `${c.name}(${c.priority || 100})`
-      );
-      console.log(
-        `   📋 Tag "${tag}" converter priority: ${converterNames.join(" > ")}`
-      );
-    });
   }
 
   /**
@@ -154,22 +129,8 @@ export class GPXDecoder {
     );
     if (existingIndex !== -1) {
       this.middlewarePlugins[existingIndex] = plugin;
-      console.log(`🔄 Updated middleware: ${plugin.name}`);
     } else {
       this.middlewarePlugins.push(plugin);
-      console.log(`🔌 Registered middleware: ${plugin.name}`);
-    }
-
-    // Show supported hooks for middleware
-    const hooks = [];
-    if (plugin.onTokenize) hooks.push("onTokenize");
-    if (plugin.onAstGenerate) hooks.push("onAstGenerate");
-    if (plugin.onConvert) hooks.push("onConvert");
-    if (plugin.onComplete) hooks.push("onComplete");
-    if (plugin.onError) hooks.push("onError");
-
-    if (hooks.length > 0) {
-      console.log(`   🎣 Supported hooks: ${hooks.join(", ")}`);
     }
   }
 
@@ -211,12 +172,10 @@ export class GPXDecoder {
     }
 
     if (!pluginToRemove) {
-      console.warn(`Converter plugin ${pluginName} does not exist`);
       return;
     }
 
     this.registeredPlugins.delete(pluginName);
-    console.log(`🗑️ Removed converter: ${pluginName}`);
   }
 
   /**
@@ -226,9 +185,6 @@ export class GPXDecoder {
     const index = this.middlewarePlugins.findIndex((p) => p.name === name);
     if (index !== -1) {
       this.middlewarePlugins.splice(index, 1);
-      console.log(`🗑️ Removed middleware: ${name}`);
-    } else {
-      console.warn(`Middleware ${name} does not exist`);
     }
   }
 
@@ -323,16 +279,16 @@ export class GPXDecoder {
 
     // Initialize all plugins
     const allPlugins = [
-      ...Array.from(this.converterPlugins.values()).flat(),
-      ...this.middlewarePlugins,
+      ...new Map(
+        [
+          ...Array.from(this.converterPlugins.values()).flat(),
+          ...this.middlewarePlugins,
+        ].map((plugin) => [plugin.name, plugin] as const)
+      ).values(),
     ];
 
     for (const plugin of allPlugins) {
-      try {
-        await plugin.initialize?.(context);
-      } catch (error) {
-        console.error(`Plugin ${plugin.name} initialization failed:`, error);
-      }
+      await plugin.initialize?.(context);
     }
 
     this.initialized = true;
@@ -348,16 +304,16 @@ export class GPXDecoder {
 
     // Destroy all plugins
     const allPlugins = [
-      ...Array.from(this.converterPlugins.values()).flat(),
-      ...this.middlewarePlugins,
+      ...new Map(
+        [
+          ...Array.from(this.converterPlugins.values()).flat(),
+          ...this.middlewarePlugins,
+        ].map((plugin) => [plugin.name, plugin] as const)
+      ).values(),
     ];
 
     for (const plugin of allPlugins) {
-      try {
-        await plugin.destroy?.(context);
-      } catch (error) {
-        console.error(`Plugin ${plugin.name} destruction failed:`, error);
-      }
+      await plugin.destroy?.(context);
     }
 
     this.initialized = false;
@@ -419,15 +375,12 @@ export class GPXDecoder {
     // Pass decoder instance reference in context
     context.metadata.set("decoder", this);
 
-    try {
-      // Fixed pipeline stage sequential execution
-      for (const processor of this.processors) {
-        try {
-          // 1. Execute core processor
-          context = await processor.process(context);
+    for (const processor of this.processors) {
+      try {
+        context = await processor.process(context);
 
           // 2. Execute corresponding middleware hooks based on stage
-          switch (processor.stage) {
+        switch (processor.stage) {
             case PipelineStage.TOKENIZE:
               if (context.tokens) {
                 context.tokens = await this.executeMiddlewareHook(
@@ -467,27 +420,21 @@ export class GPXDecoder {
                 );
               }
               break;
-          }
-        } catch (error) {
-          context.errors.push(error as Error);
-
-          // Execute error handling middleware
-          for (const middleware of this.middlewarePlugins) {
-            await middleware.onError?.(error as Error, context);
-          }
-
-          console.error(
-            `Pipeline stage ${processor.stage} processing failed:`,
-            error
-          );
         }
+      } catch (error) {
+        context.errors.push(error as Error);
+        for (const middleware of this.middlewarePlugins) {
+          await middleware.onError?.(error as Error, context);
+        }
+        throw new Error(
+          `GPX pipeline stage "${processor.stage}" failed: ${
+            (error as Error).message
+          }`
+        );
       }
-
-      return context.result;
-    } catch (error) {
-      console.error("GPX parsing failed:", error);
-      throw error;
     }
+
+    return context.result;
   }
 
   /**

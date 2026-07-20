@@ -27,10 +27,29 @@ export const convertGPXExtensionsMapping = {
 };
 
 /**
- * Convert Semicircles from FIT files to decimal latitude/longitude
- * @param {number} semicircles - Position data in FIT files (latitude or longitude)
- * @returns {number} Converted decimal format (degrees)
+ * Convert semicircles (FIT wire/SDK units, scale 1 in Garmin JS profile) to decimal degrees.
+ * @garmin/fitsdk decoder applies scale/offset per field; record position fields remain semicircles (units string), not pre-converted degrees.
  */
 export const semicirclesToDegrees = (semicircles: number) => {
   return semicircles * (180 / Math.pow(2, 31));
 };
+
+/** FIT sint32 semicircle field: invalid when all bits set (Garmin profile). */
+export const FIT_SEMICIRCLE_INVALID_SINT32 = 2147483647; // 0x7fffffff
+
+/**
+ * Raw FIT semicircle from SDK (scale 1 "semicircles" units) → decimal degrees.
+ * Treats FIT invalid sentinel as absent. Preserves 0° (equator / prime meridian).
+ */
+export function normalizeFitSemicircleToDegrees(
+  raw: unknown,
+  precision = 6
+): number | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  const n = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isFinite(n)) return undefined;
+  if (n === FIT_SEMICIRCLE_INVALID_SINT32) return undefined;
+  const deg = semicirclesToDegrees(n);
+  const factor = Math.pow(10, precision);
+  return Math.round(deg * factor) / factor;
+}

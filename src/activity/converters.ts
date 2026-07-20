@@ -1,7 +1,13 @@
 import { BaseActivityConverter, ActivityContext } from "./base.js";
 import { ActivityLengthType, FileType, TokenAST } from "../types.js";
 import { ActivityType, ActivityRecordType, ActivityLapType } from "../types.js";
-import { GPX11Type, TrksegType, TrkType, WptType } from "../GPX/types.js";
+import {
+  GPX11Type,
+  RteType,
+  TrksegType,
+  TrkType,
+  WptType,
+} from "../GPX/types.js";
 import {
   FITFileType,
   RecordMesgType,
@@ -13,9 +19,16 @@ import {
   ActivityLapType as TCXActivityLapType,
   TCXFileType,
   TrackpointType,
+  CourseType,
+  CoursePointType,
+  TrackType,
 } from "../TCX/types.js";
-import { semicirclesToDegrees, convertGPXExtensionsMapping } from "../util.js";
+import {
+  normalizeFitSemicircleToDegrees,
+  convertGPXExtensionsMapping,
+} from "../util.js";
 import dayjs from "dayjs";
+import type { Dayjs } from "dayjs";
 import { MetricsAggregator } from "./metrics/MetricsCalculator.js";
 
 /**
@@ -64,9 +77,9 @@ export class GPXToActivityConverter extends BaseActivityConverter {
 
     // Convert routes
     if (gpx.rte) {
-      obj.routes = gpx.rte.map((rte, idx) => {
-        return this.convertTrackSeg2Lap(rte, idx);
-      });
+      obj.routes = gpx.rte.map((route, index) =>
+        this.convertRoute2Lap(route, index)
+      );
     }
     return obj;
   }
@@ -96,7 +109,7 @@ export class GPXToActivityConverter extends BaseActivityConverter {
       speed: point?.speed,
       power: point?.power,
       cadence: point?.cadence,
-      timestamp: dayjs(point.time).toDate(),
+      timestamp: point.time ? dayjs(point.time).toDate() : undefined,
       ...gpxExtensions,
     };
   }
@@ -130,14 +143,23 @@ export class GPXToActivityConverter extends BaseActivityConverter {
    * @returns
    */
   private convertTrackSeg2Lap(seg: TrksegType, idx: number): ActivityLapType {
-    const points =
-      seg.trkpt
-        ?.filter(
-          (point: WptType | undefined) => point !== undefined && point.time
-        )
-        ?.map((trkpt: WptType, ptIdx: number) =>
-          this.convertPoint(trkpt, ptIdx, idx)
-        ) || [];
+    return this.convertPoints2Lap(seg.trkpt ?? [], idx);
+  }
+
+  private convertRoute2Lap(route: RteType, idx: number): ActivityLapType {
+    return this.convertPoints2Lap(route.rtept ?? [], idx, route.name);
+  }
+
+  private convertPoints2Lap(
+    sourcePoints: WptType[],
+    idx: number,
+    routeName?: string
+  ): ActivityLapType {
+    const points = sourcePoints
+      .filter((point) => point.time)
+      .map((point, pointIndex) =>
+        this.convertPoint(point, pointIndex, idx)
+      );
 
     const metricsAggregator = new MetricsAggregator();
     const aggregatedData = metricsAggregator.calculateRecordsAggMetrics(points);
@@ -145,6 +167,7 @@ export class GPXToActivityConverter extends BaseActivityConverter {
     return {
       index: idx,
       messageIndex: idx,
+      routeName,
       ...aggregatedData,
       records: aggregatedData?.records || [],
       lengths: [],
@@ -214,21 +237,18 @@ export class FITToActivityConverter extends BaseActivityConverter {
         index,
         ...sessionMesg,
         // 对坐标进行转换
-        startPositionLat: sessionMesg?.startPositionLat
-          ? round(semicirclesToDegrees(Number(sessionMesg.startPositionLat)), 6)
-          : undefined,
-        startPositionLong: sessionMesg?.startPositionLong
-          ? round(
-              semicirclesToDegrees(Number(sessionMesg.startPositionLong)),
-              6
-            )
-          : undefined,
-        endPositionLat: sessionMesg?.endPositionLat
-          ? round(semicirclesToDegrees(Number(sessionMesg.endPositionLat)), 6)
-          : undefined,
-        endPositionLong: sessionMesg?.endPositionLong
-          ? round(semicirclesToDegrees(Number(sessionMesg.endPositionLong)), 6)
-          : undefined,
+        startPositionLat: normalizeFitSemicircleToDegrees(
+          sessionMesg?.startPositionLat
+        ),
+        startPositionLong: normalizeFitSemicircleToDegrees(
+          sessionMesg?.startPositionLong
+        ),
+        endPositionLat: normalizeFitSemicircleToDegrees(
+          sessionMesg?.endPositionLat
+        ),
+        endPositionLong: normalizeFitSemicircleToDegrees(
+          sessionMesg?.endPositionLong
+        ),
         laps: this.convertFITLap2Trackseg(sessionMesg?.lapMesgs),
       }));
     } else if (fit.courseMesgs?.length) {
@@ -261,19 +281,21 @@ export class FITToActivityConverter extends BaseActivityConverter {
       ...rest
     } = point;
 
+    const rawLat =
+      positionLat ?? (point as RecordMesgType & { position_lat?: number }).position_lat;
+    const rawLong =
+      positionLong ??
+      (point as RecordMesgType & { position_long?: number }).position_long;
+
     return {
       lapIndex: lapIdx || 0,
       index: idx || 0,
-      positionLat: positionLat
-        ? round(semicirclesToDegrees(Number(positionLat)), 6)
-        : undefined,
-      positionLong: positionLong
-        ? round(semicirclesToDegrees(Number(positionLong)), 6)
-        : undefined,
-      altitude: altitude || undefined,
-      enhancedAltitude: enhancedAltitude || undefined,
-      speed: speed || undefined,
-      enhancedSpeed: enhancedSpeed || undefined,
+      positionLat: normalizeFitSemicircleToDegrees(rawLat),
+      positionLong: normalizeFitSemicircleToDegrees(rawLong),
+      altitude,
+      enhancedAltitude,
+      speed,
+      enhancedSpeed,
       ...rest,
     };
   }
@@ -301,18 +323,12 @@ export class FITToActivityConverter extends BaseActivityConverter {
         index: i,
         ...lap,
         // 对坐标数据进行转换
-        startPositionLat: lap?.startPositionLat
-          ? round(semicirclesToDegrees(Number(lap.startPositionLat)), 6)
-          : undefined,
-        startPositionLong: lap?.startPositionLong
-          ? round(semicirclesToDegrees(Number(lap.startPositionLong)), 6)
-          : undefined,
-        endPositionLat: lap?.endPositionLat
-          ? round(semicirclesToDegrees(Number(lap.endPositionLat)), 6)
-          : undefined,
-        endPositionLong: lap?.endPositionLong
-          ? round(semicirclesToDegrees(Number(lap.endPositionLong)), 6)
-          : undefined,
+        startPositionLat: normalizeFitSemicircleToDegrees(lap?.startPositionLat),
+        startPositionLong: normalizeFitSemicircleToDegrees(
+          lap?.startPositionLong
+        ),
+        endPositionLat: normalizeFitSemicircleToDegrees(lap?.endPositionLat),
+        endPositionLong: normalizeFitSemicircleToDegrees(lap?.endPositionLong),
         records: records,
         lengths: lengthMesgs,
       });
@@ -371,11 +387,120 @@ export class TCXToActivityConverter extends BaseActivityConverter {
       );
     }
 
-    if (tcx.Courses?.Course?.length) {
-      // TODO: 处理 Course
+    const rawCourses = tcx.Courses?.Course;
+    const courseList: CourseType[] =
+      rawCourses == null
+        ? []
+        : Array.isArray(rawCourses)
+          ? rawCourses
+          : [rawCourses];
+    if (courseList.length) {
+      obj.routes = courseList.map((course, idx) =>
+        this.convertTCXCourseToRoute(course, idx)
+      );
     }
     return obj;
   }
+
+  /**
+   * TCX Course → FileType.routes（每条 Course 对应一条 route lap）
+   */
+  private convertTCXCourseToRoute(
+    course: CourseType,
+    idx: number
+  ): ActivityLapType {
+    const records: ActivityRecordType[] = [];
+    let ptIdx = 0;
+
+    const asTrackArray = (
+      t: TrackType | TrackType[] | undefined
+    ): TrackType[] => {
+      if (t == null) return [];
+      return Array.isArray(t) ? t : [t];
+    };
+
+    const pushTracks = (tracks?: TrackType[]) => {
+      for (const tr of tracks ?? []) {
+        for (const tp of tr.Trackpoint ?? []) {
+          if (tp == null || tp.Time === undefined) continue;
+          records.push(this.convertPoint(tp, ptIdx++, idx));
+        }
+      }
+    };
+
+    pushTracks(asTrackArray(course.Track as TrackType | TrackType[] | undefined));
+    const laps = course.Lap == null ? [] : Array.isArray(course.Lap) ? course.Lap : [course.Lap];
+    for (const lap of laps) {
+      const lapExt = lap as TCXActivityLapType & { Track?: TrackType | TrackType[] };
+      pushTracks(asTrackArray(lapExt.Track));
+    }
+
+    let seq = records.length;
+    const baseCue: Dayjs =
+      records[0]?.timestamp != null
+        ? dayjs(records[0].timestamp)
+        : dayjs("2000-01-01T00:00:00Z");
+
+    const coursePoints =
+      course.CoursePoint == null
+        ? []
+        : Array.isArray(course.CoursePoint)
+          ? course.CoursePoint
+          : [course.CoursePoint];
+    for (const cp of coursePoints) {
+      const rec = this.convertTCXCoursePointToRecord(cp, seq++, idx, baseCue);
+      if (rec) records.push(rec);
+    }
+
+    const metricsAggregator = new MetricsAggregator();
+    const aggregatedData =
+      records.length > 0
+        ? metricsAggregator.calculateRecordsAggMetrics(records)
+        : { records };
+
+    return {
+      index: idx,
+      messageIndex: idx,
+      routeName: course.Name,
+      ...aggregatedData,
+      records: aggregatedData?.records ?? records,
+      lengths: [],
+    } as ActivityLapType;
+  }
+
+  private convertTCXCoursePointToRecord(
+    cp: CoursePointType,
+    ptIdx: number,
+    lapIdx: number,
+    baseTime: Dayjs
+  ): ActivityRecordType | undefined {
+    const lat = cp.Position?.LatitudeDegrees
+      ? Number(cp.Position.LatitudeDegrees)
+      : undefined;
+    const lon = cp.Position?.LongitudeDegrees
+      ? Number(cp.Position.LongitudeDegrees)
+      : undefined;
+    if (
+      lat == null &&
+      lon == null &&
+      cp.AltitudeMeters == null
+    ) {
+      return undefined;
+    }
+    const t =
+      typeof cp.Time === "number" && Number.isFinite(cp.Time)
+        ? baseTime.add(cp.Time, "second").toDate()
+        : baseTime.add(ptIdx, "second").toDate();
+    return {
+      lapIndex: lapIdx,
+      index: ptIdx,
+      positionLat: lat,
+      positionLong: lon,
+      altitude: cp.AltitudeMeters,
+      timestamp: t,
+    };
+  }
+
   /**
    * 将 tcx 的 activity 转为 ActivityType
    * @param activity
@@ -394,6 +519,7 @@ export class TCXToActivityConverter extends BaseActivityConverter {
     return {
       index: idx,
       messageIndex: idx,
+      sport: activity.Sport?.toLowerCase(),
       laps: laps,
       ...aggregatedData,
     };

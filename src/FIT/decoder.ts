@@ -17,6 +17,8 @@ import {
   CourseStructurePlugin,
   FileHeaderPlugin,
 } from "./plugins.js";
+import { HealthStructurePlugin } from "./health.js";
+import { fitDebugLog } from "../fit-debug.js";
 
 /**
  * FIT decoder - follows GPX style plugin architecture
@@ -48,7 +50,7 @@ export class FITDecoder {
       new CompleteProcessor(),
     ];
 
-    console.log(
+    fitDebugLog(
       "🔧 FIT core pipeline processors initialized (fixed and not modifiable)"
     );
   }
@@ -63,6 +65,7 @@ export class FITDecoder {
       new FileHeaderPlugin(),
       new SessionStructurePlugin(),
       new CourseStructurePlugin(),
+      new HealthStructurePlugin(),
     ];
 
     for (const plugin of defaultStructurePlugins) {
@@ -71,7 +74,7 @@ export class FITDecoder {
     }
 
     this.defaultPluginsRegistered = true;
-    console.log(
+    fitDebugLog(
       "✅ Default FIT structure plugins auto-registered (FileHeader, Session, Course, etc.)"
     );
   }
@@ -123,7 +126,7 @@ export class FITDecoder {
     // Show priority information
     const priorityInfo =
       plugin.priority !== undefined ? ` (priority: ${plugin.priority})` : "";
-    console.log(
+    fitDebugLog(
       `📦 Registered FIT message converter: ${
         plugin.name
       }${priorityInfo}, supported message types: ${plugin.supportedMessageTypes.join(
@@ -137,7 +140,7 @@ export class FITDecoder {
       const converterNames = converters.map(
         (c) => `${c.name}(${c.priority || 100})`
       );
-      console.log(
+      fitDebugLog(
         `   📋 Message type "${messageType}" converter priority: ${converterNames.join(
           " > "
         )}`
@@ -158,7 +161,7 @@ export class FITDecoder {
 
     const priorityInfo =
       plugin.priority !== undefined ? ` (priority: ${plugin.priority})` : "";
-    console.log(
+    fitDebugLog(
       `🏗️ Registered FIT structure plugin: ${plugin.name}${priorityInfo}`
     );
   }
@@ -172,14 +175,14 @@ export class FITDecoder {
     );
     if (existingIndex !== -1) {
       this.middlewarePlugins[existingIndex] = plugin;
-      console.log(`🔄 Updated FIT middleware: ${plugin.name}`);
+      fitDebugLog(`🔄 Updated FIT middleware: ${plugin.name}`);
     } else {
       this.middlewarePlugins.push(plugin);
       // Sort by priority
       this.middlewarePlugins.sort(
         (a, b) => (a.priority || 100) - (b.priority || 100)
       );
-      console.log(`🔌 Registered FIT middleware: ${plugin.name}`);
+      fitDebugLog(`🔌 Registered FIT middleware: ${plugin.name}`);
     }
 
     // Show supported hooks for middleware
@@ -191,7 +194,7 @@ export class FITDecoder {
     if (plugin.onError) hooks.push("onError");
 
     if (hooks.length > 0) {
-      console.log(`   🎣 Supported hooks: ${hooks.join(", ")}`);
+      fitDebugLog(`   🎣 Supported hooks: ${hooks.join(", ")}`);
     }
   }
 
@@ -215,7 +218,6 @@ export class FITDecoder {
    */
   unregisterPlugin(pluginName: string): boolean {
     if (!this.registeredPlugins.has(pluginName)) {
-      console.warn(`FIT plugin ${pluginName} does not exist`);
       return false;
     }
 
@@ -249,7 +251,7 @@ export class FITDecoder {
     }
 
     this.registeredPlugins.delete(pluginName);
-    console.log(`🗑️ Removed FIT plugin: ${pluginName}`);
+    fitDebugLog(`🗑️ Removed FIT plugin: ${pluginName}`);
     return true;
   }
 
@@ -266,20 +268,17 @@ export class FITDecoder {
 
     // Initialize all plugins
     const allPlugins = [
-      ...Array.from(this.converterPlugins.values()).flat(),
-      ...this.structurePlugins,
-      ...this.middlewarePlugins,
+      ...new Map(
+        [
+          ...Array.from(this.converterPlugins.values()).flat(),
+          ...this.structurePlugins,
+          ...this.middlewarePlugins,
+        ].map((plugin) => [plugin.name, plugin] as const)
+      ).values(),
     ];
 
     for (const plugin of allPlugins) {
-      try {
-        await plugin.initialize?.(context);
-      } catch (error) {
-        console.error(
-          `FIT plugin ${plugin.name} initialization failed:`,
-          error
-        );
-      }
+      await plugin.initialize?.(context);
     }
 
     this.initialized = true;
@@ -295,17 +294,17 @@ export class FITDecoder {
 
     // Destroy all plugins
     const allPlugins = [
-      ...Array.from(this.converterPlugins.values()).flat(),
-      ...this.structurePlugins,
-      ...this.middlewarePlugins,
+      ...new Map(
+        [
+          ...Array.from(this.converterPlugins.values()).flat(),
+          ...this.structurePlugins,
+          ...this.middlewarePlugins,
+        ].map((plugin) => [plugin.name, plugin] as const)
+      ).values(),
     ];
 
     for (const plugin of allPlugins) {
-      try {
-        await plugin.destroy?.(context);
-      } catch (error) {
-        console.error(`FIT plugin ${plugin.name} destruction failed:`, error);
-      }
+      await plugin.destroy?.(context);
     }
 
     this.initialized = false;
@@ -361,8 +360,6 @@ export class FITDecoder {
   async parseByBuffer(
     buffer: Buffer,
     options: {
-      skipValidation?: boolean;
-      enableStats?: boolean;
       userData?: Record<string, any>;
     } = {}
   ): Promise<FITFileType | undefined> {
@@ -375,22 +372,22 @@ export class FITDecoder {
     context.metadata.set("decoder", this);
 
     try {
-      // Fixed pipeline stage sequential execution
+      // Core stages are fail-fast. Middleware may transform stage values but
+      // cannot hide a corrupt or partially structured document.
       for (const processor of this.processors) {
         try {
-          // 1. Execute core processor
+          if (processor.stage === FITPipelineStage.PARSE && context.rawData) {
+            context.rawData = await this.executeMiddlewareHook(
+              "onParse",
+              context.rawData,
+              context
+            );
+          }
+
           context = await processor.process(context);
 
-          // 2. Execute corresponding middleware hooks based on stage
           switch (processor.stage) {
             case FITPipelineStage.PARSE:
-              if (context.rawData) {
-                context.rawData = await this.executeMiddlewareHook(
-                  "onParse",
-                  context.rawData,
-                  context
-                );
-              }
               break;
 
             case FITPipelineStage.EXTRACT:
@@ -430,16 +427,16 @@ export class FITDecoder {
           for (const middleware of this.middlewarePlugins) {
             await middleware.onError?.(error as Error, context);
           }
-          console.error(
-            `FIT pipeline stage ${processor.stage} processing failed:`,
-            error
+          throw new Error(
+            `FIT pipeline stage "${processor.stage}" failed: ${
+              (error as Error).message
+            }`
           );
         }
       }
-      console.log("🎉 FIT parsing completed",context.result);
+      fitDebugLog("🎉 FIT parsing completed", context.result);
       return context.result;
     } catch (error) {
-      console.error("FIT parsing failed:", error);
       throw error;
     }
   }

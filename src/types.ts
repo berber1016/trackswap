@@ -164,6 +164,8 @@ export interface ActivityLapType extends LapMesgType {
    * 结束时间
    */
   endTime?: Date;
+  /** TCX Course / GPX rte 等路线的展示名称（可选） */
+  routeName?: string;
   records: ActivityRecordType[];
   lengths: ActivityLengthType[];
 }

@@ -1,7 +1,8 @@
 {
   "name": "trackswap",
-  "version": "0.0.26",
-  "description": "A powerful and flexible GPX parser and encoder library for Node.js and TypeScript. TrackSwap provides comprehensive support for GPX 1.1 format with advanced features like plugin system, middleware support, and optimized performance.",
+  "version": "0.2.0",
+  "description": "A typed, adapter-based toolkit for decoding, normalizing and transcoding FIT, GPX and TCX data.",
+  "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -26,18 +27,26 @@
     "dev": "ts-node src/index.ts",
     "clean": "rm -rf dist",
     "build": "npm run clean && npm run build:types && npm run build:esm && npm run build:cjs && npm run build:optimize",
-    "build:types": "tsc --emitDeclarationOnly",
+    "build:types": "tsc -p tsconfig.types.json",
     "build:esm": "NODE_ENV=production node build.config.js",
     "build:cjs": "NODE_ENV=production FORMAT=cjs node build.config.js",
     "build:dev": "npm run clean && npm run build:types && NODE_ENV=development node build.config.js",
     "build:optimize": "node scripts/optimize-dist.js",
-    "build:js": "esbuild src/index.ts --bundle --platform=node --target=node14 --format=esm --outfile=dist/index.js --minify --sourcemap",
+    "build:js": "esbuild src/index.ts --bundle --platform=node --target=node18 --format=esm --outfile=dist/index.js --minify --sourcemap",
     "build:tsc": "tsc && npm run minify",
     "minify": "terser dist/**/*.js --compress --mangle --output dist/index.min.js --source-map",
     "analyze": "NODE_ENV=production ANALYZE=true node build.config.js",
     "start": "node dist/index.js",
     "test:gpx": "cd example/gpx && rm -f output* *.json *_encoded.xml && node test.js",
     "test:fit": "cd example/FIT && rm -rf output && node test.js",
+    "test:fit-coords": "npm run build:dev && node scripts/verify-fit-coordinates.mjs",
+    "test:tcx-course": "npm run build:dev && node scripts/tcx-course-smoke.mjs",
+    "test:routes-fit": "npm run build:dev && node scripts/routes-only-fit-smoke.mjs",
+    "test": "npm run test:architecture && npm run test:health && npm run test:garmin-parity",
+    "test:architecture": "esbuild test/architecture.test.ts --bundle --platform=node --target=node18 --format=esm --outfile=/tmp/trackswap-architecture.test.mjs && node /tmp/trackswap-architecture.test.mjs",
+    "test:health": "esbuild test/health-fit.test.ts --bundle --platform=node --target=node18 --format=esm --outfile=/tmp/trackswap-health-fit.test.mjs && node /tmp/trackswap-health-fit.test.mjs",
+    "test:garmin-parity": "esbuild test/garmin-sdk-parity.test.ts --bundle --platform=node --target=node18 --format=esm --outfile=/tmp/trackswap-garmin-sdk-parity.test.mjs && node /tmp/trackswap-garmin-sdk-parity.test.mjs",
+    "test:package": "node scripts/verify-package.mjs",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
@@ -66,7 +75,7 @@
     "url": "https://github.com/berber1016/trackswap/issues"
   },
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=18.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.24",

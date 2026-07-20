@@ -1,611 +1,182 @@
-import { GPXDecoder, GPXEncoder } from "./GPX/index.js";
-import { GPX11Type } from "./GPX/types.js";
+import type {
+  CourseEncodeOptions,
+  DecodeOptions,
+  EncodeOptions,
+  TrackDocument,
+  TrackFormat,
+  TrackInput,
+  TrackSwapOptions,
+  TranscodeOptions,
+} from "./document.js";
+import { asTrackSwapError, TrackSwapError } from "./errors.js";
+import { createBuiltInAdapters } from "./core/builtin-adapters.js";
 import {
-  FITDecoder,
-  FITEncoder,
-  encodeCourse,
-  CoursePlan,
-} from "./FIT/index.js";
-import { Sport, SubSport } from "./FIT/types/message_index_type.js";
-import { FITFileType } from "./FIT/types.js";
-import { TCXDecoder, TCXEncoder } from "./TCX/index.js";
-import { TCXFileType } from "./TCX/types.js";
-import { ActivityProcessor } from "./activity/processor.js";
-import { ActivityRecordType, ActivityType, FileType } from "./types.js";
+  isFITCourseAdapter,
+  type TrackFormatAdapter,
+} from "./core/format-adapter.js";
+import { FormatRegistry } from "./core/format-registry.js";
+import type { FileType } from "./types.js";
+
+function toBuffer(input: TrackInput): Buffer {
+  if (typeof input === "string") return Buffer.from(input, "utf8");
+  if (Buffer.isBuffer(input)) return input;
+  return Buffer.from(input.buffer, input.byteOffset, input.byteLength);
+}
+
+function isTrackInput(input: TrackInput | FileType): input is TrackInput {
+  return (
+    typeof input === "string" ||
+    Buffer.isBuffer(input) ||
+    input instanceof Uint8Array
+  );
+}
+
 /**
- * Multi-format track exchange processing class
- * Provides parsing and encoding functionality for GPX, FIT, TCX files
+ * Stateless facade for decoding, encoding and transcoding track documents.
+ * Format-specific behavior lives in adapters; this class only orchestrates them.
  */
 export class TrackSwap {
-  private gpxDecoder: GPXDecoder;
-  private gpxEncoder: GPXEncoder;
-  private fitDecoder: FITDecoder;
-  private fitEncoder: FITEncoder;
-  private tcxDecoder: TCXDecoder;
-  private tcxEncoder: TCXEncoder;
-  private activityProcessor: ActivityProcessor;
+  private readonly registry: FormatRegistry;
+  private disposed = false;
 
-  constructor() {
-    this.gpxDecoder = new GPXDecoder();
-    this.gpxEncoder = new GPXEncoder();
-    this.fitDecoder = new FITDecoder();
-    this.fitEncoder = new FITEncoder();
-    this.tcxDecoder = new TCXDecoder();
-    this.tcxEncoder = new TCXEncoder();
-    this.activityProcessor = new ActivityProcessor();
-
-    // 基础指标聚合已在 ExtensionManager 构造函数中默认注册
-  }
-
-  // ==================== GPX Functions ====================
-
-  /**
-   * Parse GPX file Buffer to GPX object
-   */
-  async parseGPX(buffer: Buffer): Promise<GPX11Type | undefined> {
-    try {
-      return await this.gpxDecoder.parserByBuffer(buffer);
-    } catch (error) {
-      console.error("GPX parsing failed:", error);
-      throw new Error(`GPX parsing failed: ${(error as Error).message}`);
-    }
-  }
-
-  /**
-   * Parse GPX file string to GPX object
-   */
-  async parseGPXString(xmlString: string): Promise<GPX11Type | undefined> {
-    const buffer = Buffer.from(xmlString, "utf-8");
-    return this.parseGPX(buffer);
-  }
-
-  /**
-   * Encode GPX object to Buffer
-   */
-  async encodeGPX(gpxData: GPX11Type): Promise<Buffer> {
-    try {
-      return await this.gpxEncoder.encode(gpxData);
-    } catch (error) {
-      console.error("GPX encoding failed:", error);
-      throw new Error(`GPX encoding failed: ${(error as Error).message}`);
-    }
-  }
-
-  /**
-   * Encode GPX object to XML string
-   */
-  encodeGPXString(gpxData: GPX11Type): string {
-    try {
-      return this.gpxEncoder.encodeToString(gpxData);
-    } catch (error) {
-      console.error("GPX encoding failed:", error);
-      throw new Error(`GPX encoding failed: ${(error as Error).message}`);
-    }
-  }
-
-  // ==================== FIT Functions ====================
-
-  /**
-   * Parse FIT file Buffer to FIT object
-   */
-  async parseFIT(buffer: Buffer): Promise<FITFileType | undefined> {
-    try {
-      return await this.fitDecoder.parseByBuffer(buffer);
-    } catch (error) {
-      console.error("FIT parsing failed:", error);
-      throw new Error(`FIT parsing failed: ${(error as Error).message}`);
-    }
-  }
-
-  /**
-   * Encode FIT object to Buffer (Activity file)
-   */
-  async encodeFIT(fitData: FITFileType): Promise<Buffer> {
-    try {
-      return await this.fitEncoder.encode(fitData);
-    } catch (error) {
-      console.error("FIT encoding failed:", error);
-      throw new Error(`FIT encoding failed: ${(error as Error).message}`);
-    }
-  }
-
-  /**
-   * Convert FIT file Buffer to Course FIT Buffer
-   */
-  async encodeFITCourse(buffer: Buffer): Promise<Buffer> {
-    try {
-      return await this.convertToFITCourse(buffer);
-    } catch (error) {
-      console.error("FIT Course encoding failed:", error);
-      throw new Error(
-        `FIT Course encoding failed: ${(error as Error).message}`,
-      );
-    }
-  }
-
-  /**
-   * Parse FIT file Buffer and convert it to Course FIT Buffer directly
-   */
-  async convertFITToCourse(buffer: Buffer): Promise<Buffer> {
-    try {
-      return await this.encodeFITCourse(buffer);
-    } catch (error) {
-      console.error("FIT to Course conversion failed:", error);
-      throw new Error(
-        `FIT to Course conversion failed: ${(error as Error).message}`,
-      );
-    }
-  }
-
-  /**
-   * Parse source file into ActivityType and convert it to FIT Course buffer.
-   * Supports gpx/fit/tcx (auto-detect by default).
-   */
-  async convertToFITCourse(
-    buffer: Buffer,
-    sourceType?: "gpx" | "fit" | "tcx",
-  ): Promise<Buffer> {
-    try {
-      const activityFile = await this.parseToActivity(buffer, sourceType);
-      if (!activityFile) {
-        throw new Error("Activity conversion result is empty");
-      }
-      const coursePlan = this.buildCoursePlanFromActivityFile(activityFile);
-      const output = encodeCourse(coursePlan);
-      return Buffer.from(output);
-    } catch (error) {
-      console.error("File to FIT Course conversion failed:", error);
-      throw new Error(
-        `File to FIT Course conversion failed: ${(error as Error).message}`,
-      );
-    }
-  }
-
-  private buildCoursePlanFromActivityFile(file: FileType): CoursePlan {
-    const firstActivity = file.activities?.[0];
-    const sourceRecords: ActivityRecordType[] = [
-      ...(
-        file.activities?.flatMap((activity) => activity.laps ?? []) ?? []
-      ).flatMap((lap) => lap.records ?? []),
-      ...(file.routes?.flatMap((route) => route.records ?? []) ?? []),
-      ...(file.points ?? []),
+  constructor(options: TrackSwapOptions = {}) {
+    const builtInAdapters =
+      options.includeBuiltInAdapters === false
+        ? []
+        : createBuiltInAdapters().adapters;
+    const adapters: readonly TrackFormatAdapter[] = [
+      ...builtInAdapters,
+      ...(options.adapters ?? []),
     ];
-    const records = sourceRecords
-      .filter(
-        (record) =>
-          record.timestamp != null &&
-          record.positionLat != null &&
-          record.positionLong != null,
-      )
-      .sort((a, b) => {
-        const aTime = new Date(a.timestamp).getTime();
-        const bTime = new Date(b.timestamp).getTime();
-        return aTime - bTime;
-      })
-      .map((record) => ({
-        timestamp: record.timestamp,
-        latitude: record.positionLat as number,
-        longitude: record.positionLong as number,
-        distance: record.distance,
-        altitude: record.enhancedAltitude ?? record.altitude,
-        speed: record.enhancedSpeed ?? record.speed,
-      }));
+    this.registry = new FormatRegistry(adapters);
+  }
 
-    if (records.length === 0) {
-      throw new Error(
-        "Cannot build CoursePlan: no valid activity records with timestamp and coordinates.",
+  detect(input: TrackInput): TrackFormat {
+    this.assertActive();
+    return this.registry.detect(toBuffer(input));
+  }
+
+  async decode<TNative = unknown>(
+    input: TrackInput,
+    options: DecodeOptions = {}
+  ): Promise<TrackDocument<TNative>> {
+    this.assertActive();
+    const buffer = toBuffer(input);
+    const format = options.format ?? this.registry.detect(buffer);
+    const adapter = this.registry.get(format);
+    const startedAt = Date.now();
+
+    try {
+      const decoded = await adapter.decode(buffer, options);
+      return {
+        schemaVersion: "2",
+        format,
+        kinds: [...new Set(decoded.kinds)],
+        source: { byteLength: buffer.byteLength },
+        metadata: decoded.metadata ?? {},
+        facets: decoded.facets,
+        ...(options.includeNative
+          ? { native: decoded.native as TNative }
+          : {}),
+        diagnostics: {
+          durationMs: Date.now() - startedAt,
+          warnings: decoded.warnings ?? [],
+          fit: decoded.fitDiagnostics,
+        },
+      };
+    } catch (error) {
+      throw asTrackSwapError(
+        error,
+        "DECODE_FAILED",
+        `Failed to decode ${format.toUpperCase()}`,
+        format
       );
     }
-
-    return {
-      name: this.resolveCourseName(file),
-      sport: this.toEnumValue(Sport, firstActivity?.sport) ?? Sport.CYCLING,
-      subSport:
-        this.toEnumValue(SubSport, firstActivity?.subSport) ?? SubSport.GENERIC,
-      records,
-      timeCreated: records[0].timestamp,
-    };
   }
 
-  private resolveCourseName(file: FileType): string {
-    const fileName = file.metadata?.fileName?.trim();
-    if (fileName) {
-      return fileName;
+  async decodeActivity(
+    input: TrackInput,
+    options: DecodeOptions = {}
+  ): Promise<FileType> {
+    const document = await this.decode(input, options);
+    if (!document.facets.activity) {
+      throw new TrackSwapError(
+        "ACTIVITY_NOT_FOUND",
+        `The ${document.format.toUpperCase()} document has no activity facet`,
+        { format: document.format }
+      );
     }
-    const originType = file.metadata?.originType;
-    return originType ? `${originType.toLowerCase()}-course` : "course";
+    return document.facets.activity;
   }
 
-  private toEnumValue<T extends Record<string, string | number>>(
-    enumType: T,
-    raw?: string,
-  ): number | undefined {
-    if (!raw) return undefined;
-    const normalizedRaw = raw
-      .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
-      .replace(/[^a-zA-Z0-9]+/g, "_")
-      .replace(/^_+|_+$/g, "")
-      .toUpperCase();
-
-    for (const key of Object.keys(enumType)) {
-      if (!Number.isNaN(Number(key))) {
-        continue;
-      }
-      if (key.toUpperCase() === normalizedRaw) {
-        const enumValue = enumType[key as keyof T];
-        return typeof enumValue === "number" ? enumValue : undefined;
-      }
-    }
-    return undefined;
-  }
-
-  // ==================== TCX Functions ====================
-
-  /**
-   * Parse TCX file string to TCX object
-   */
-  async parseTCXString(xmlString: string): Promise<TCXFileType> {
-    const buffer = Buffer.from(xmlString, "utf-8");
-    return this.parseTCX(buffer);
-  }
-
-  /**
-   * Parse TCX file Buffer to TCX object
-   */
-  async parseTCX(buffer: Buffer): Promise<TCXFileType> {
-    try {
-      const result = await this.tcxDecoder.parseByBuffer(buffer);
-      if (!result) {
-        throw new Error("TCX parsing result is empty");
-      }
-      return result;
-    } catch (error) {
-      console.error("TCX parsing failed:", error);
-      throw new Error(`TCX parsing failed: ${(error as Error).message}`);
-    }
-  }
-
-  /**
-   * Encode TCX object to Buffer
-   */
-  async encodeTCX(tcxData: TCXFileType): Promise<Buffer> {
-    try {
-      return await this.tcxEncoder.encode(tcxData);
-    } catch (error) {
-      console.error("TCX encoding failed:", error);
-      throw new Error(`TCX encoding failed: ${(error as Error).message}`);
-    }
-  }
-
-  /**
-   * Encode TCX object to XML string
-   */
-  async encodeTCXString(tcxData: TCXFileType): Promise<string> {
-    try {
-      return await this.tcxEncoder.encodeToString(tcxData);
-    } catch (error) {
-      console.error("TCX encoding failed:", error);
-      throw new Error(`TCX encoding failed: ${(error as Error).message}`);
-    }
-  }
-
-  // ==================== Unified Format Conversion ====================
-
-  /**
-   * Convert GPX data to unified Activity format
-   */
-  async convertGPXToActivity(gpxData: GPX11Type): Promise<FileType> {
-    return await this.activityProcessor.convertToActivity(gpxData, "gpx");
-  }
-
-  /**
-   * Convert FIT data to unified Activity format
-   */
-  async convertFITToActivity(fitData: FITFileType): Promise<FileType> {
-    return await this.activityProcessor.convertToActivity(fitData, "fit");
-  }
-
-  /**
-   * Convert TCX data to unified Activity format
-   */
-  async convertTCXToActivity(tcxData: TCXFileType): Promise<FileType> {
-    return await this.activityProcessor.convertToActivity(tcxData, "tcx");
-  }
-
-  /**
-   * Convert FileType to GPX format
-   */
-  async convertActivityToGPX(file: FileType): Promise<GPX11Type> {
-    return (await this.activityProcessor.encodeActivity(
-      file,
-      "gpx",
-    )) as GPX11Type;
-  }
-
-  /**
-   * Convert Activity to FIT format
-   */
-  async convertActivityToFIT(file: FileType): Promise<FITFileType> {
-    return (await this.activityProcessor.encodeActivity(
-      file,
-      "fit",
-    )) as FITFileType;
-  }
-
-  /**
-   * Convert Activity to TCX format
-   */
-  async convertActivityToTCX(file: FileType): Promise<TCXFileType> {
-    return (await this.activityProcessor.encodeActivity(
-      file,
-      "tcx",
-    )) as TCXFileType;
-  }
-
-  /**
-   * Generic file format conversion method
-   * @param sourceFile Source file Buffer
-   * @param targetType Target file format
-   * @param sourceType Source file format (optional, auto-detect if not provided)
-   * @returns Converted file Buffer
-   */
-  async convertFile(
-    sourceFile: Buffer,
-    targetType: "gpx" | "fit" | "tcx",
-    sourceType?: "gpx" | "fit" | "tcx",
+  async encodeActivity(
+    activity: FileType,
+    options: EncodeOptions
   ): Promise<Buffer> {
+    this.assertActive();
     try {
-      // If source format is not provided, auto-detect
-      const detectedSourceType = sourceType || this.detectFormat(sourceFile);
-
-      if (detectedSourceType === "unknown" || detectedSourceType == undefined) {
-        throw new Error(
-          "Unable to recognize source file format, please specify sourceType parameter",
-        );
-      }
-
-      // If source format and target format are the same, return directly
-      if (detectedSourceType === targetType) {
-        return sourceFile;
-      }
-
-      // 1. Parse source file
-      let sourceData: GPX11Type | FITFileType | TCXFileType | undefined;
-      switch (detectedSourceType) {
-        case "gpx":
-          const gpxResult = await this.parseGPX(sourceFile);
-          if (!gpxResult) {
-            throw new Error("GPX file parsing failed");
-          }
-          sourceData = gpxResult;
-          break;
-        case "fit":
-          sourceData = await this.parseFIT(sourceFile);
-          break;
-        case "tcx":
-          sourceData = await this.parseTCX(sourceFile);
-          break;
-        default:
-          throw new Error(
-            `Unsupported source file format: ${detectedSourceType}`,
-          );
-      }
-
-      // 2. Convert to unified Activity format
-      let file: FileType;
-      switch (detectedSourceType) {
-        case "gpx":
-          file = await this.convertGPXToActivity(sourceData as GPX11Type);
-          break;
-        case "fit":
-          file = await this.convertFITToActivity(sourceData as FITFileType);
-          break;
-        case "tcx":
-          file = await this.convertTCXToActivity(sourceData as TCXFileType);
-          break;
-        default:
-          throw new Error(
-            `Unsupported source file format conversion: ${detectedSourceType}`,
-          );
-      }
-      // 3. Encode to target format
-      switch (targetType) {
-        case "gpx":
-          const gpxData = await this.convertActivityToGPX(file);
-
-          return await this.encodeGPX(gpxData);
-        case "fit":
-          const fitData = await this.convertActivityToFIT(file);
-          return await this.encodeFIT(fitData);
-        case "tcx":
-          const tcxData = await this.convertActivityToTCX(file);
-          return await this.encodeTCX(tcxData);
-        default:
-          throw new Error(`Unsupported target file format: ${targetType}`);
-      }
+      return await this.registry.get(options.format).encodeActivity(activity);
     } catch (error) {
-      console.error(`File format conversion failed:`, error);
-      const sourceTypeStr = sourceType || "auto-detect";
-      throw new Error(
-        `${sourceTypeStr} to ${targetType.toUpperCase()} failed: ${
-          (error as Error).message
-        }`,
+      throw asTrackSwapError(
+        error,
+        "ENCODE_FAILED",
+        `Failed to encode ${options.format.toUpperCase()}`,
+        options.format
       );
     }
   }
 
-  /**
-   * Auto-detect file format
-   */
-  detectFormat(buffer: Buffer): "gpx" | "fit" | "tcx" | "unknown" {
-    const content = buffer.toString("utf-8", 0, Math.min(1024, buffer.length));
-
-    // FIT files start with a specific binary header
-    if (buffer.length >= 12) {
-      const header = buffer.toString("ascii", 8, 12);
-      if (header === ".FIT") {
-        return "fit";
-      }
-    }
-
-    // XML based formats
-    if (content.includes("<?xml")) {
-      if (
-        content.includes("<gpx") ||
-        content.includes("http://www.topografix.com/GPX/")
-      ) {
-        return "gpx";
-      }
-      if (
-        content.includes("<TrainingCenterDatabase") ||
-        content.includes(
-          "http://www.garmin.com/xmlschemas/TrainingCenterDatabase/",
-        )
-      ) {
-        return "tcx";
-      }
-    }
-
-    return "unknown";
+  async transcode(
+    input: TrackInput,
+    options: TranscodeOptions
+  ): Promise<Buffer> {
+    this.assertActive();
+    const buffer = toBuffer(input);
+    const sourceFormat = options.sourceFormat ?? this.registry.detect(buffer);
+    if (sourceFormat === options.format) return Buffer.from(buffer);
+    const activity = await this.decodeActivity(buffer, { format: sourceFormat });
+    return this.encodeActivity(activity, { format: options.format });
   }
 
-  /**
-   * Unified file parsing method
-   * @param buffer File Buffer
-   * @param sourceType Source file format (optional, auto-detect if not provided)
-   * @returns Parsed file object
-   */
-  async parseFile(
-    buffer: Buffer,
-    sourceType?: "gpx" | "fit" | "tcx",
-  ): Promise<GPX11Type | FITFileType | TCXFileType | undefined> {
-    const detectedSourceType = sourceType || this.detectFormat(buffer);
-
-    if (detectedSourceType === "unknown") {
-      throw new Error(
-        "Unable to recognize file format, please specify sourceType parameter",
+  async encodeCourse(
+    source: TrackInput | FileType,
+    options: CourseEncodeOptions = {}
+  ): Promise<Buffer> {
+    this.assertActive();
+    const activity = isTrackInput(source)
+      ? await this.decodeActivity(source, { format: options.sourceFormat })
+      : source;
+    const adapter = this.registry.get("fit");
+    if (!isFITCourseAdapter(adapter)) {
+      throw new TrackSwapError(
+        "FORMAT_UNSUPPORTED",
+        "The registered FIT adapter does not support course encoding",
+        { format: "fit" }
       );
     }
-
-    switch (detectedSourceType) {
-      case "gpx":
-        const gpxResult = await this.parseGPX(buffer);
-        if (!gpxResult) {
-          throw new Error("GPX parsing failed");
-        }
-        return gpxResult;
-      case "fit":
-        return await this.parseFIT(buffer);
-      case "tcx":
-        return await this.parseTCX(buffer);
-      default:
-        throw new Error(`Unsupported file format: ${detectedSourceType}`);
-    }
-  }
-
-  /**
-   * Parse file and convert to Activity format
-   * @param buffer File Buffer
-   * @param sourceType Source file format (optional, auto-detect if not provided)
-   * @returns FileType format data
-   */
-  async parseToActivity(
-    buffer: Buffer,
-    sourceType?: "gpx" | "fit" | "tcx",
-  ): Promise<FileType | undefined> {
-    const detectedSourceType = sourceType || this.detectFormat(buffer);
-
-    if (detectedSourceType === "unknown") {
-      throw new Error(
-        "Unable to recognize file format, please specify sourceType parameter",
+    try {
+      return await adapter.encodeCourse(activity);
+    } catch (error) {
+      throw asTrackSwapError(
+        error,
+        "ENCODE_FAILED",
+        "Failed to encode FIT course",
+        "fit"
       );
     }
-    let result: FileType | undefined = undefined;
-    switch (detectedSourceType) {
-      case "gpx":
-        const gpxData = await this.parseGPX(buffer);
-        if (!gpxData) {
-          throw new Error("GPX parsing failed");
-        }
-        result = await this.convertGPXToActivity(gpxData);
-        break;
-      case "fit":
-        const fitData = await this.parseFIT(buffer);
-        if (fitData) {
-          result = await this.convertFITToActivity(fitData);
-        }
-        break;
-      case "tcx":
-        const tcxData = await this.parseTCX(buffer);
-        result = await this.convertTCXToActivity(tcxData);
-        break;
-      default:
-        throw new Error(`Unsupported file format: ${detectedSourceType}`);
+  }
+
+  async dispose(): Promise<void> {
+    if (this.disposed) return;
+    this.disposed = true;
+    await this.registry.dispose();
+  }
+
+  private assertActive(): void {
+    if (this.disposed) {
+      throw new TrackSwapError("DISPOSED", "TrackSwap instance is disposed");
     }
-
-    return result;
-  }
-
-  /**
-   * Get Activity processor instance
-   */
-  getActivityProcessor(): ActivityProcessor {
-    return this.activityProcessor;
-  }
-
-  // ==================== Instance Management ====================
-
-  /**
-   * Get GPX decoder instance
-   */
-  getGPXDecoder(): GPXDecoder {
-    return this.gpxDecoder;
-  }
-
-  /**
-   * Get GPX encoder instance
-   */
-  getGPXEncoder(): GPXEncoder {
-    return this.gpxEncoder;
-  }
-
-  /**
-   * Get FIT decoder instance
-   */
-  getFITDecoder(): FITDecoder {
-    return this.fitDecoder;
-  }
-
-  /**
-   * Get FIT encoder instance
-   */
-  getFITEncoder(): FITEncoder {
-    return this.fitEncoder;
-  }
-
-  /**
-   * Get TCX decoder instance
-   */
-  getTCXDecoder(): TCXDecoder {
-    return this.tcxDecoder;
-  }
-
-  /**
-   * Get TCX encoder instance
-   */
-  getTCXEncoder(): TCXEncoder {
-    return this.tcxEncoder;
-  }
-  /**
-   * Destroy instance, clean up resources
-   */
-  async destroy(): Promise<void> {
-    await this.gpxDecoder.destroy();
-    await this.fitDecoder.destroy();
-    await this.tcxDecoder.destroy();
-    await this.activityProcessor.destroy();
   }
 }
 
-// Default export
 export default TrackSwap;

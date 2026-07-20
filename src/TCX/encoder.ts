@@ -16,6 +16,9 @@ import {
   HistoryType,
   WorkoutListType,
   CourseListType,
+  CourseType,
+  CourseLapType as TCXCourseLapType,
+  CoursePointType,
   HeartRateInBeatsPerMinuteType,
   CadenceType,
 } from "./types.js";
@@ -167,7 +170,6 @@ export class TCXEncoder {
 
     if (folders.Courses) {
       // TODO: Handle Courses
-      console.warn("Courses in Folders not yet implemented");
     }
 
     parts.push("</Folders>");
@@ -244,8 +246,8 @@ export class TCXEncoder {
    * Build single Activity element
    */
   private buildActivity(activity: ActivityType): string {
-    const sport = activity.Activity || "Other";
-    const parts: string[] = [`<Activity Activity="${sport}">`];
+    const sport = activity.Sport || "Other";
+    const parts: string[] = [`<Activity Sport="${sport}">`];
 
     // ID is required
     parts.push(`<Id>${this.formatTime(activity.Id)}</Id>`);
@@ -262,12 +264,10 @@ export class TCXEncoder {
 
     if (activity.Training) {
       // TODO: Implement Training element
-      console.warn("Activity Training not yet implemented");
     }
 
     if (activity.Creator) {
       // TODO: Implement Creator element
-      console.warn("Activity Creator not yet implemented");
     }
 
     if (activity.Extensions) {
@@ -282,7 +282,12 @@ export class TCXEncoder {
    * Build ActivityLap element
    */
   private buildActivityLap(lap: ActivityLapType): string {
-    const parts: string[] = ["<Lap>"];
+    const startTime = lap.StartTime
+      ? ` StartTime="${this.escapeXMLAttribute(
+          this.formatTime(lap.StartTime)
+        )}"`
+      : "";
+    const parts: string[] = [`<Lap${startTime}>`];
 
     // Time related
     this.addOptionalNumericElement(
@@ -401,12 +406,8 @@ export class TCXEncoder {
     return parts.join("\n          ");
   }
 
-  /**
-   * Build Position element
-   */
-  private buildPosition(position: PositionType): string {
-    const parts: string[] = ["<Position>"];
-
+  private buildGeoCoords(position: PositionType): string {
+    const parts: string[] = [];
     if (position?.LatitudeDegrees) {
       parts.push(
         `<LatitudeDegrees>${this.formatCoordinate(
@@ -414,7 +415,6 @@ export class TCXEncoder {
         )}</LatitudeDegrees>`
       );
     }
-
     if (position?.LongitudeDegrees) {
       parts.push(
         `<LongitudeDegrees>${this.formatCoordinate(
@@ -422,9 +422,24 @@ export class TCXEncoder {
         )}</LongitudeDegrees>`
       );
     }
-
-    parts.push("</Position>");
     return parts.join("");
+  }
+
+  private wrapGeoTag(
+    tag: string,
+    position: PositionType | undefined
+  ): string {
+    if (!position) return "";
+    const inner = this.buildGeoCoords(position);
+    return inner ? `<${tag}>${inner}</${tag}>` : "";
+  }
+
+  /**
+   * Build Position element
+   */
+  private buildPosition(position: PositionType): string {
+    const inner = this.buildGeoCoords(position);
+    return inner ? `<Position>${inner}</Position>` : "";
   }
 
   /**
@@ -502,7 +517,6 @@ export class TCXEncoder {
    */
   private buildWorkouts(workouts: WorkoutListType): string {
     // TODO: Implement Workouts building
-    console.warn("Workouts building not yet implemented");
     return "<Workouts></Workouts>";
   }
 
@@ -510,9 +524,111 @@ export class TCXEncoder {
    * Build Courses element
    */
   private buildCourses(courses: CourseListType): string {
-    // TODO: Implement Courses building
-    console.warn("Courses building not yet implemented");
-    return "<Courses></Courses>";
+    const parts: string[] = ["<Courses>"];
+    if (courses.Course?.length) {
+      courses.Course.forEach((course) => {
+        parts.push(this.buildCourseElement(course));
+      });
+    }
+    parts.push("</Courses>");
+    return parts.join("\n  ");
+  }
+
+  /**
+   * Single TCX Course under Courses
+   */
+  private buildCourseElement(course: CourseType): string {
+    const parts: string[] = ["<Course>"];
+
+    this.addOptionalElement(parts, "Name", course.Name);
+    this.addOptionalElement(parts, "Notes", course.Notes);
+
+    if (course.Lap?.length) {
+      course.Lap.forEach((lap) => {
+        parts.push(this.buildCourseLap(lap));
+      });
+    }
+
+    if (course.Track?.length) {
+      course.Track.forEach((track) => {
+        parts.push(this.buildTrack(track));
+      });
+    }
+
+    if (course.CoursePoint?.length) {
+      course.CoursePoint.forEach((cp) => {
+        parts.push(this.buildCoursePoint(cp));
+      });
+    }
+
+    if (course.Extensions) {
+      parts.push(this.buildExtensions(course.Extensions));
+    }
+
+    parts.push("</Course>");
+    return parts.join("\n    ");
+  }
+
+  /**
+   * Lap inside Course (CourseLap schema subset)
+   */
+  private buildCourseLap(lap: TCXCourseLapType): string {
+    const parts: string[] = ["<Lap>"];
+
+    this.addOptionalNumericElement(
+      parts,
+      "TotalTimeSeconds",
+      lap.TotalTimeSeconds
+    );
+    this.addOptionalNumericElement(parts, "DistanceMeters", lap.DistanceMeters);
+
+    parts.push(this.wrapGeoTag("BeginPosition", lap.BeginPosition));
+    parts.push(this.wrapGeoTag("EndPosition", lap.EndPosition));
+
+    this.addOptionalNumericElement(
+      parts,
+      "BeginAltitudeMeters",
+      lap.BeginAltitudeMeters
+    );
+    this.addOptionalNumericElement(
+      parts,
+      "EndAltitudeMeters",
+      lap.EndAltitudeMeters
+    );
+
+    const lapAny = lap as TCXCourseLapType & { Track?: TrackType[] };
+    if (lapAny.Track?.length) {
+      lapAny.Track.forEach((track) => {
+        parts.push(this.buildTrack(track));
+      });
+    }
+
+    if (lap.Extensions) {
+      parts.push(this.buildExtensions(lap.Extensions));
+    }
+
+    parts.push("</Lap>");
+    return parts.join("\n      ");
+  }
+
+  /** Course cue point */
+  private buildCoursePoint(cp: CoursePointType): string {
+    const parts: string[] = ["<CoursePoint>"];
+    this.addOptionalElement(parts, "Name", cp.Name);
+    if (cp.Time !== undefined && cp.Time !== null) {
+      parts.push(`<Time>${cp.Time}</Time>`);
+    }
+    if (cp.Position) {
+      parts.push(this.buildPosition(cp.Position));
+    }
+    this.addOptionalNumericElement(parts, "AltitudeMeters", cp.AltitudeMeters);
+    this.addOptionalElement(parts, "PointType", cp.PointType);
+    this.addOptionalElement(parts, "Notes", cp.Notes);
+    if (cp.Extensions) {
+      parts.push(this.buildExtensions(cp.Extensions));
+    }
+    parts.push("</CoursePoint>");
+    return parts.join("");
   }
 
   /**
@@ -562,16 +678,11 @@ export class TCXEncoder {
    * Format time
    */
   private formatTime(time: Date | string): string {
-    // If it's a string and already in correct ISO format, use it directly
-    if (typeof time === "string") {
-      // Check if it's already in standard ISO 8601 format
-      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(time)) {
-        return time;
-      }
+    const parsed = dayjs(time);
+    if (!parsed.isValid()) {
+      throw new Error(`Cannot encode invalid TCX timestamp: ${String(time)}`);
     }
-
-    // For Date objects or other format strings, use dayjs processing
-    return dayjs(time).utc().format("YYYY-MM-DDTHH:mm:ss[Z]");
+    return parsed.toISOString();
   }
 
   /**

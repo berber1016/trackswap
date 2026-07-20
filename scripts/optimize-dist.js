@@ -7,10 +7,21 @@ const KEEP_FILES = [
   "index.cjs",
   "index.d.ts",
   "TrackSwap.d.ts",
+  "document.d.ts",
+  "errors.d.ts",
   "types.d.ts",
+  "util.d.ts",
+  "fit-debug.d.ts",
 ];
 
-const KEEP_DIRECTORIES = ["GPX", "FIT", "TCX", "sport", "core"];
+const KEEP_DIRECTORIES = [
+  "GPX",
+  "FIT",
+  "TCX",
+  "activity",
+  "sport",
+  "core",
+];
 
 async function optimizeDist() {
   try {

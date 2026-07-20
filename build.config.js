@@ -11,7 +11,7 @@ const baseConfig = {
   entryPoints: ["src/index.ts"],
   bundle: true,
   platform: "node",
-  target: "node14",
+  target: "node18",
   external: Object.keys(pkg.dependencies || {}),
   metafile: true,
   logLevel: "info",
@@ -29,6 +29,11 @@ const cjsConfig = {
   ...baseConfig,
   format: "cjs",
   outfile: "dist/index.cjs",
+  // @garmin/fitsdk is ESM-only. Bundle it into the CommonJS artifact so
+  // require("trackswap") works in Jest and CommonJS Node applications.
+  external: Object.keys(pkg.dependencies || {}).filter(
+    (dependency) => dependency !== "@garmin/fitsdk"
+  ),
 };
 
 const productionConfig = {

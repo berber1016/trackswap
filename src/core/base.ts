@@ -158,8 +158,8 @@ export abstract class BaseConverter<
 
     Object.entries(ast.attributes).forEach(([key, value]) => {
       const targetKey = mapping[key];
-      if (targetKey && targetKey in target) {
-        (target as any)[targetKey] = String(value || "");
+      if (targetKey) {
+        (target as any)[targetKey] = String(value ?? "");
       }
     });
   }
@@ -254,6 +254,6 @@ export abstract class BaseMiddleware<
   }
 
   async onError(error: Error, context: TContext): Promise<void> {
-    console.error(`Middleware ${this.name} processing error:`, error);
+    context.warnings.push(`Middleware ${this.name}: ${error.message}`);
   }
 }

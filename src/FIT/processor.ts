@@ -6,6 +6,7 @@ import {
   IFITMiddlewarePlugin,
 } from "./base.js";
 import { FITDecoderMesgs, FITFileType, FITContext } from "./types.js";
+import { fitDebugLog, fitDebugWarn } from "../fit-debug.js";
 
 /**
  * FIT pipeline stages
@@ -42,11 +43,14 @@ export class ParseProcessor implements IFITPipelineProcessor {
 
     try {
       // Parse binary data using FIT SDK
-      const rawMessages = await this.parseWithFitSDK(context.rawData);
+      const rawMessages = await this.parseWithFitSDK(
+        context.rawData,
+        context
+      );
       context.rawMessages = rawMessages;
-      console.log("🎉 FIT parsing raw messages:", rawMessages);
+      fitDebugLog("🎉 FIT parsing raw messages:", rawMessages);
       context.performance.parseTime = Date.now() - startTime;
-      console.log(
+      fitDebugLog(
         `🔧 FIT parsing completed, contains message types: ${Object.keys(
           rawMessages
         ).join(", ")}`
@@ -61,8 +65,22 @@ export class ParseProcessor implements IFITPipelineProcessor {
   /**
    * Parse binary data using FIT SDK
    */
-  private async parseWithFitSDK(buffer: Buffer): Promise<FITDecoderMesgs> {
-    const { Decoder, Stream } = await import("@garmin/fitsdk");
+  private async parseWithFitSDK(
+    buffer: Buffer,
+    context: FITContext
+  ): Promise<FITDecoderMesgs> {
+    const { Decoder, Profile, Stream } = await import("@garmin/fitsdk");
+    const profileParts = [
+      Profile.version?.major,
+      Profile.version?.minor,
+      Profile.version?.patch,
+    ].filter((value) => value !== undefined);
+    if (profileParts.length > 0) {
+      context.metadata.set(
+        "fit-sdk-profile-version",
+        profileParts.join(".")
+      );
+    }
 
     const stream = Stream.fromBuffer(buffer);
     if (!Decoder.isFIT(stream)) {
@@ -72,11 +90,24 @@ export class ParseProcessor implements IFITPipelineProcessor {
     const decoder = new Decoder(stream);
     const { messages, errors } = decoder.read();
     if (errors && errors.length > 0) {
-      console.warn("FIT parsing warnings:", errors);
+      fitDebugWarn("FIT parsing warnings:", errors);
     }
 
     return messages as FITDecoderMesgs;
   }
+}
+
+function normalizeFitRecordRow(
+  record: Record<string, unknown>
+): Record<string, unknown> {
+  const row = { ...record };
+  if (row.position_lat != null && row.positionLat == null) {
+    row.positionLat = row.position_lat;
+  }
+  if (row.position_long != null && row.positionLong == null) {
+    row.positionLong = row.position_long;
+  }
+  return row;
 }
 
 /**
@@ -108,9 +139,13 @@ export class ExtractProcessor implements IFITPipelineProcessor {
       const converters = this.getConverters(messageType);
 
       if (converters.length === 0) {
-        // No converter, use raw messages directly
-        extractedMessages[messageType] = messages;
-        console.log(
+        extractedMessages[messageType] =
+          messageType === "recordMesgs"
+            ? (messages.map((m) =>
+                normalizeFitRecordRow(m as Record<string, unknown>)
+              ) as unknown as FITDecoderMesgs["recordMesgs"])
+            : messages;
+        fitDebugLog(
           `📋 Message type "${messageType}" has no converter, using raw data`
         );
       } else {
@@ -122,14 +157,14 @@ export class ExtractProcessor implements IFITPipelineProcessor {
             context
           );
           extractedMessages[messageType] = convertedMessages;
-          console.log(
+          fitDebugLog(
             `✅ Message type "${messageType}" using converter ${converter.name}`
           );
         } catch (error) {
           context.errors.push(error as Error);
           extractedMessages[messageType] = messages; // Fallback to raw messages
-          console.error(
-            `❌ Converter ${converter.name} error processing ${messageType}:`,
+          fitDebugWarn(
+            `FIT converter "${converter.name}" failed for ${messageType}; raw messages were retained`,
             error
           );
         }
@@ -167,10 +202,14 @@ export class StructureProcessor implements IFITPipelineProcessor {
       try {
         const pluginResult = plugin.structureData(context.rawMessages, context);
         structuredResult = { ...structuredResult, ...pluginResult };
-        console.log(`🔧 Structure plugin ${plugin.name} processing completed`);
+        fitDebugLog(`🔧 Structure plugin ${plugin.name} processing completed`);
       } catch (error) {
         context.errors.push(error as Error);
-        console.error(`❌ Structure plugin ${plugin.name} error:`, error);
+        throw new Error(
+          `FIT structure plugin "${plugin.name}" failed: ${
+            (error as Error).message
+          }`
+        );
       }
     }
 
@@ -210,7 +249,7 @@ export class CompleteProcessor implements IFITPipelineProcessor {
       }
     }
 
-    console.log(`✅ FIT processing completed, total time: ${totalTime}ms`);
+    fitDebugLog(`✅ FIT processing completed, total time: ${totalTime}ms`);
 
     return context;
   }

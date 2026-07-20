@@ -113,7 +113,6 @@ export abstract class BaseTCXMiddleware
   // TCX specific middleware logic can be added here
 
   async onError(error: Error, context: TCXContext): Promise<void> {
-    console.error(`TCX middleware ${this.name} processing error:`, error);
     context.warnings.push(`Middleware ${this.name} error: ${error.message}`);
   }
 }

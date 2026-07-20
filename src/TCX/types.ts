@@ -121,7 +121,7 @@ export interface ActivityListType {
 }
 
 export interface ActivityType {
-  Activity?: "Other" | "Running" | "Biking";
+  Sport?: "Other" | "Running" | "Biking";
   Id: string;
   Lap: ActivityLapType[];
   Notes?: string;
@@ -150,6 +150,7 @@ export interface PlanType {
 }
 
 export interface ActivityLapType {
+  StartTime?: string;
   TotalTimeSeconds?: number;
   DistanceMeters?: number;
   MaximumSpeed?: number;

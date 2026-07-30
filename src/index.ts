@@ -29,6 +29,7 @@ export type {
 
 export type {
   ActivityLapType,
+  ActivityLinkType,
   ActivityLengthType,
   ActivityRecordType,
   ActivityType,

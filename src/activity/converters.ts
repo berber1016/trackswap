@@ -109,6 +109,24 @@ export class GPXToActivityConverter extends BaseActivityConverter {
       speed: point?.speed,
       power: point?.power,
       cadence: point?.cadence,
+      course: point?.course,
+      magvar: point?.magvar,
+      geoidheight: point?.geoidheight,
+      pointName: point?.name,
+      comment: point?.cmt,
+      description: point?.desc,
+      source: point?.src,
+      links: point?.link,
+      symbol: point?.sym,
+      pointType: point?.type,
+      fix: point?.fix,
+      sat: point?.sat,
+      hdop: point?.hdop,
+      vdop: point?.vdop,
+      pdop: point?.pdop,
+      ageofdgpsdata: point?.ageofdgpsdata,
+      dgpsid: point?.dgpsid,
+      gpxExtensions: point?.extensions,
       timestamp: point.time ? dayjs(point.time).toDate() : undefined,
       ...gpxExtensions,
     };
@@ -132,6 +150,14 @@ export class GPXToActivityConverter extends BaseActivityConverter {
     return {
       index: idx,
       messageIndex: idx,
+      activityName: trk.name,
+      comment: trk.cmt,
+      description: trk.desc,
+      source: trk.src,
+      links: trk.link,
+      activityNumber: trk.number,
+      sport: trk.type,
+      gpxExtensions: trk.extensions,
       laps: laps,
       ...aggregatedData,
     };
@@ -143,11 +169,23 @@ export class GPXToActivityConverter extends BaseActivityConverter {
    * @returns
    */
   private convertTrackSeg2Lap(seg: TrksegType, idx: number): ActivityLapType {
-    return this.convertPoints2Lap(seg.trkpt ?? [], idx);
+    return {
+      ...this.convertPoints2Lap(seg.trkpt ?? [], idx),
+      gpxExtensions: seg.extensions,
+    };
   }
 
   private convertRoute2Lap(route: RteType, idx: number): ActivityLapType {
-    return this.convertPoints2Lap(route.rtept ?? [], idx, route.name);
+    return {
+      ...this.convertPoints2Lap(route.rtept ?? [], idx, route.name),
+      comment: route.cmt,
+      description: route.desc,
+      source: route.src,
+      links: route.link,
+      routeNumber: route.number,
+      routeType: route.type,
+      gpxExtensions: route.extensions,
+    };
   }
 
   private convertPoints2Lap(
@@ -155,21 +193,25 @@ export class GPXToActivityConverter extends BaseActivityConverter {
     idx: number,
     routeName?: string
   ): ActivityLapType {
-    const points = sourcePoints
-      .filter((point) => point.time)
-      .map((point, pointIndex) =>
-        this.convertPoint(point, pointIndex, idx)
-      );
+    const points = sourcePoints.map((point, pointIndex) =>
+      this.convertPoint(point, pointIndex, idx)
+    );
 
     const metricsAggregator = new MetricsAggregator();
     const aggregatedData = metricsAggregator.calculateRecordsAggMetrics(points);
+    const processedByIndex = new Map(
+      (aggregatedData?.records ?? []).map((record) => [record.index, record])
+    );
+    const records = points.map(
+      (point) => processedByIndex.get(point.index) ?? point
+    );
 
     return {
       index: idx,
       messageIndex: idx,
       routeName,
       ...aggregatedData,
-      records: aggregatedData?.records || [],
+      records,
       lengths: [],
     };
   }

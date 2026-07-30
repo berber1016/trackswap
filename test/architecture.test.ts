@@ -8,13 +8,17 @@ import TrackSwap, {
   type FileType,
   type TrackFormatAdapter,
 } from "../src/index.js";
+import { GPXEncoder } from "../src/GPX/encoder.js";
 
 const minimalGPX = Buffer.from(
   [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<gpx version="1.1" creator="trackswap-test" ',
     'xmlns="http://www.topografix.com/GPX/1/1">',
-    '<trk><name>Morning Run</name><trkseg>',
+    '<trk><name>Morning Run</name><cmt>Morning comment</cmt>',
+    '<desc>Easy day</desc><src>Watch</src>',
+    '<link href="https://example.com/run"><text>Run</text></link>',
+    '<number>7</number><type>running</type><trkseg>',
     '<trkpt lat="31.2304" lon="121.4737">',
     '<ele>5</ele><time>2026-07-18T00:00:00.000Z</time></trkpt>',
     '<trkpt lat="31.2305" lon="121.4738">',
@@ -49,6 +53,15 @@ test("detects built-in formats without leaking native data by default", async ()
     assert.equal(document.source.byteLength, minimalGPX.byteLength);
     assert.equal(document.native, undefined);
     assert.ok(document.facets.activity);
+    assert.equal(
+      document.facets.activity?.activities?.[0]?.activityName,
+      "Morning Run"
+    );
+    assert.equal(document.facets.activity?.activities?.[0]?.sport, "running");
+    assert.equal(
+      document.facets.activity?.activities?.[0]?.links?.[0]?.href,
+      "https://example.com/run"
+    );
 
     const withNative = await trackSwap.decode(minimalGPX, {
       includeNative: true,
@@ -59,20 +72,114 @@ test("detects built-in formats without leaking native data by default", async ()
   }
 });
 
+test("preserves GPX track metadata through the activity facet", async () => {
+  const trackSwap = new TrackSwap();
+  try {
+    const activity = await trackSwap.decodeActivity(minimalGPX);
+    const encoded = await trackSwap.encodeActivity(activity, { format: "gpx" });
+    const xml = encoded.toString("utf8");
+
+    assert.match(xml, /<name>Morning Run<\/name>/);
+    assert.match(xml, /<cmt>Morning comment<\/cmt>/);
+    assert.match(xml, /<desc>Easy day<\/desc>/);
+    assert.match(xml, /<src>Watch<\/src>/);
+    assert.match(xml, /<link href="https:\/\/example\.com\/run">/);
+    assert.match(xml, /<number>7<\/number>/);
+    assert.match(xml, /<type>running<\/type>/);
+
+    const roundTrip = await trackSwap.decodeActivity(encoded);
+    assert.equal(roundTrip.activities?.[0]?.activityName, "Morning Run");
+    assert.equal(roundTrip.activities?.[0]?.sport, "running");
+    assert.equal(roundTrip.activities?.[0]?.description, "Easy day");
+  } finally {
+    await trackSwap.dispose();
+  }
+});
+
+test("parses GPX attribute fields and keeps untimed points", async () => {
+  const trackSwap = new TrackSwap();
+  try {
+    const input = Buffer.from(
+      [
+        '<gpx version="1.1" creator="trackswap-test">',
+        '<metadata><author><email id="runner" domain="example.com"/>',
+        '</author></metadata><trk><name>Untimed</name><trkseg>',
+        '<trkpt lat="1" lon="2"><sat>8</sat></trkpt>',
+        '</trkseg></trk></gpx>',
+      ].join("")
+    );
+    const document = await trackSwap.decode(input, { includeNative: true });
+    const native = document.native as {
+      metadata?: { author?: { email?: { id?: string; domain?: string } } };
+    };
+
+    assert.equal(native.metadata?.author?.email?.id, "runner");
+    assert.equal(native.metadata?.author?.email?.domain, "example.com");
+    assert.equal(document.facets.activity?.activities?.[0]?.laps?.[0]?.records.length, 1);
+    assert.equal(
+      document.facets.activity?.activities?.[0]?.laps?.[0]?.records[0]?.sat,
+      8
+    );
+  } finally {
+    await trackSwap.dispose();
+  }
+});
+
+test("encodes GPX 1.1 elements in schema order", () => {
+  const encoder = new GPXEncoder();
+  const xml = encoder.encodeToString({
+    version: "1.1",
+    creator: "schema-test",
+    wpt: [{ lat: 1, lon: 2, speed: 3 }],
+    rte: [
+      {
+        name: "Route",
+        extensions: { "vendor:route": "yes" },
+        rtept: [{ lat: 1, lon: 2 }],
+      },
+    ],
+    trk: [
+      {
+        name: "Track",
+        extensions: { "vendor:track": "yes" },
+        trkseg: [{ trkpt: [{ lat: 1, lon: 2 }] }],
+      },
+    ],
+    extensions: { "vendor:root": "yes" },
+  });
+
+  assert.match(xml, /<gpx creator="schema-test" version="1\.1"/);
+  assert.match(xml, /<wpt lat="1" lon="2">/);
+  assert.doesNotMatch(xml, /<speed>3<\/speed>/);
+  assert.match(xml, /<gpxtpx:speed>3<\/gpxtpx:speed>/);
+  assert.ok(
+    xml.indexOf("<vendor:route>") < xml.indexOf("<rtept"),
+    "rte/extensions must precede rtept"
+  );
+  assert.ok(
+    xml.indexOf("<vendor:track>") < xml.indexOf("<trkseg>"),
+    "trk/extensions must precede trkseg"
+  );
+  assert.ok(
+    xml.indexOf("<vendor:root>") > xml.indexOf("</trk>"),
+    "root extensions must follow tracks"
+  );
+});
+
 test("transcodes through the canonical activity facet", async () => {
   const trackSwap = new TrackSwap();
   try {
     const tcx = await trackSwap.transcode(minimalGPX, { format: "tcx" });
     const xml = tcx.toString("utf8");
     assert.doesNotMatch(xml, /Invalid Date/);
-    assert.match(xml, /<Activity Sport="Other">/);
+    assert.match(xml, /<Activity Sport="Running">/);
     assert.match(
       xml,
       /<Lap StartTime="2026-07-18T00:00:00\.000Z">/
     );
     assert.equal(trackSwap.detect(tcx), "tcx");
     const decoded = await trackSwap.decodeActivity(tcx);
-    assert.equal(decoded.activities?.[0]?.sport, "other");
+    assert.equal(decoded.activities?.[0]?.sport, "running");
     assert.equal(decoded.activities?.[0]?.laps?.[0]?.records?.length, 2);
   } finally {
     await trackSwap.dispose();

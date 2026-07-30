@@ -114,12 +114,11 @@ export class ActivityToGPXEncoder extends BaseActivityEncoder {
     );
   }
 
-  /** Count sample rows that have time but no usable lat/lon for GPX geometry. */
+  /** Count sample rows that have no usable lat/lon for GPX geometry. */
   private countRecordsMissingGpxCoordinates(file: FileType): number {
     let n = 0;
     const tally = (records?: ActivityRecordType[]) => {
       for (const r of records ?? []) {
-        if (r?.timestamp == null) continue;
         if (!this.hasValidGpxCoordinates(r)) n++;
       }
     };
@@ -143,7 +142,6 @@ export class ActivityToGPXEncoder extends BaseActivityEncoder {
   private convertRecords2Wpts(points: ActivityRecordType[]): WptType[] {
     return (
       points
-        ?.filter((v) => v.timestamp)
         ?.filter((v) => this.hasValidGpxCoordinates(v))
         .map((point) => ({
           lat: point?.positionLat,
@@ -151,9 +149,23 @@ export class ActivityToGPXEncoder extends BaseActivityEncoder {
           ele: point?.altitude,
           time: point?.timestamp,
           speed: point?.speed,
+          course: point?.course,
+          magvar: point?.magvar,
+          geoidheight: point?.geoidheight,
+          name: point?.pointName,
+          cmt: point?.comment,
+          desc: point?.description,
+          src: point?.source,
+          link: point?.links,
+          sym: point?.symbol,
+          type: point?.pointType,
+          fix: point?.fix,
+          sat: point?.sat,
           hdop: point?.hdop,
           vdop: point?.vdop,
           pdop: point?.pdop,
+          ageofdgpsdata: point?.ageofdgpsdata,
+          dgpsid: point?.dgpsid,
           extensions: this.extractGPXExtensions(point),
         })) ?? []
     );
@@ -161,8 +173,14 @@ export class ActivityToGPXEncoder extends BaseActivityEncoder {
 
   private convertRoute2GPXRoute(route: ActivityLapType): RteType {
     return {
-      // name
-      // description
+      name: route.routeName,
+      cmt: route.comment,
+      desc: route.description,
+      src: route.source,
+      link: route.links,
+      number: route.routeNumber,
+      type: route.routeType,
+      extensions: route.gpxExtensions,
       rtept: route.records ? this.convertRecords2Wpts(route.records) : [],
     };
   }
@@ -173,12 +191,19 @@ export class ActivityToGPXEncoder extends BaseActivityEncoder {
    */
   private convertActivity2GPXTrack(activity: ActivityType): TrkType {
     return {
-      // extensions
-      trkseg:  activity.laps?.map((lap) => {
-      return {
-        trkpt: lap.records ? this.convertRecords2Wpts(lap.records) : [],
-      };
-    }) || []
+      name: activity.activityName,
+      cmt: activity.comment,
+      desc: activity.description,
+      src: activity.source,
+      link: activity.links,
+      number: activity.activityNumber,
+      type: activity.sport,
+      extensions: activity.gpxExtensions,
+      trkseg:
+        activity.laps?.map((lap) => ({
+          trkpt: lap.records ? this.convertRecords2Wpts(lap.records) : [],
+          extensions: lap.gpxExtensions,
+        })) || [],
     };
   }
   /**
@@ -187,15 +212,20 @@ export class ActivityToGPXEncoder extends BaseActivityEncoder {
    * @returns
    */
   private extractGPXExtensions(point: ActivityRecordType): any {
-    const extensions: any = {};
+    const extensions: any = { ...(point.gpxExtensions ?? {}) };
 
     // Extract TrackPointExtension data
-    const trackPointData: any = {};
+    const trackPointData: any = {
+      ...(extensions["gpxtpx:TrackPointExtension"] ?? {}),
+    };
     if (typeof point?.heartRate != "undefined") {
       trackPointData["gpxtpx:hr"] = point.heartRate;
     }
     if (typeof point?.cadence != "undefined") {
       trackPointData["gpxtpx:cad"] = point.cadence;
+    }
+    if (typeof point?.speed != "undefined") {
+      trackPointData["gpxtpx:speed"] = point.speed;
     }
     if (typeof point?.temperature != "undefined") {
       trackPointData["gpxtpx:atemp"] = point.temperature;

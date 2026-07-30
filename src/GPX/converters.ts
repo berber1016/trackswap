@@ -55,7 +55,7 @@ export class WptConverter extends BaseGPXConverter {
       sym: (child, target) => (target.sym = this.parseString(child.value)),
       type: (child, target) => (target.type = this.parseString(child.value)),
       fix: (child, target) => (target.fix = this.parseString(child.value)),
-      sat: (child, target) => (target.sat = this.parseString(child.value)),
+      sat: (child, target) => (target.sat = this.parseFloat(child.value)),
       hdop: (child, target) => (target.hdop = this.parseFloat(child.value)),
       vdop: (child, target) => (target.vdop = this.parseFloat(child.value)),
       pdop: (child, target) => (target.pdop = this.parseFloat(child.value)),
@@ -172,12 +172,8 @@ export class RteConverter extends BaseGPXConverter {
       link: (child, target) => {
         if (!target.link) target.link = [];
         const decoder = context.metadata.get("decoder");
-        child.children?.forEach((linkChild) => {
-          const link = decoder
-            ?.getConverter("link")
-            ?.convert(linkChild, context);
-          if (link && target.link) target.link.push(link);
-        });
+        const link = decoder?.getConverter("link")?.convert(child, context);
+        if (link && target.link) target.link.push(link);
       },
     });
 
@@ -219,12 +215,8 @@ export class TrkConverter extends BaseGPXConverter {
       link: (child, target) => {
         if (!target.link) target.link = [];
         const decoder = context.metadata.get("decoder");
-        child.children?.forEach((linkChild) => {
-          const link = decoder
-            ?.getConverter("link")
-            ?.convert(linkChild, context);
-          if (link && target.link) target.link.push(link);
-        });
+        const link = decoder?.getConverter("link")?.convert(child, context);
+        if (link && target.link) target.link.push(link);
       },
     });
 
@@ -381,15 +373,10 @@ export class EmailConverter extends BaseGPXConverter {
   supportedTags = ["email"];
 
   convert(ast: TokenAST, context: DecoderContext): EmailType | undefined {
-    const email: EmailType = {};
-
-    this.processChildren(ast, email, {
-      id: (child, target) => (target.id = this.parseString(child.value)),
-      domain: (child, target) =>
-        (target.domain = this.parseString(child.value)),
-    });
-
-    return email;
+    return {
+      id: ast.attributes?.id,
+      domain: ast.attributes?.domain,
+    };
   }
 }
 

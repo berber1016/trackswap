@@ -109,6 +109,26 @@ export interface ActivityType extends SessionMesgType {
    */
   endTime?: Date;
   laps?: ActivityLapType[];
+  /** GPX trk/name or an equivalent source activity title. */
+  activityName?: string;
+  /** GPX trk/cmt. */
+  comment?: string;
+  /** GPX trk/desc. */
+  description?: string;
+  /** GPX trk/src. */
+  source?: string;
+  /** GPX trk/link values. */
+  links?: ActivityLinkType[];
+  /** GPX trk/number. */
+  activityNumber?: number;
+  /** Original GPX trk/extensions payload. */
+  gpxExtensions?: ExtensionsType;
+}
+
+export interface ActivityLinkType {
+  href?: string;
+  text?: string;
+  type?: string;
 }
 
 /**
@@ -137,6 +157,20 @@ export interface ActivityRecordType extends RecordMesgType {
    * Position dilution of precision.
    */
   pdop?: number;
+  course?: number;
+  magvar?: number;
+  geoidheight?: number;
+  pointName?: string;
+  comment?: string;
+  source?: string;
+  links?: ActivityLinkType[];
+  symbol?: string;
+  pointType?: string;
+  fix?: string;
+  sat?: number;
+  ageofdgpsdata?: number;
+  dgpsid?: number;
+  gpxExtensions?: ExtensionsType;
   /**
    * 转弯角度
    */
@@ -145,7 +179,7 @@ export interface ActivityRecordType extends RecordMesgType {
   /**
    * 记录描述
    */
-  description?: number;
+  description?: string;
 }
 
 export interface ActivityLengthType extends LengthMesgType {
@@ -166,6 +200,20 @@ export interface ActivityLapType extends LapMesgType {
   endTime?: Date;
   /** TCX Course / GPX rte 等路线的展示名称（可选） */
   routeName?: string;
+  /** GPX rte/cmt. */
+  comment?: string;
+  /** GPX rte/desc. */
+  description?: string;
+  /** GPX rte/src. */
+  source?: string;
+  /** GPX rte/link values. */
+  links?: ActivityLinkType[];
+  /** GPX rte/number. */
+  routeNumber?: number;
+  /** GPX rte/type. */
+  routeType?: string;
+  /** Original GPX rte or trkseg extensions payload. */
+  gpxExtensions?: ExtensionsType;
   records: ActivityRecordType[];
   lengths: ActivityLengthType[];
 }

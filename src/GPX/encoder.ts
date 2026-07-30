@@ -58,7 +58,7 @@ export class GPXEncoder {
    * Build complete GPX XML
    */
   private buildGPXXML(gpxData: GPX11Type): string {
-    const header = this.buildXMLHeader();
+    const header = this.buildXMLHeader(gpxData);
     const content = this.buildGPXContent(gpxData);
     const footer = "</gpx>";
 
@@ -88,10 +88,12 @@ export class GPXEncoder {
   /**
    * Build XML header
    */
-  private buildXMLHeader(): string {
+  private buildXMLHeader(gpxData: GPX11Type): string {
+    const creator = this.escapeXMLAttribute(gpxData.creator || "TrackSwap");
+    const version = this.escapeXMLAttribute(gpxData.version || "1.1");
     return [
       '<?xml version="1.0" encoding="UTF-8"?>',
-      '<gpx creator="https://gpxonline.net" version="1.1"',
+      `<gpx creator="${creator}" version="${version}"`,
       '     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"',
       '     xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd',
       "                        http://www.garmin.com/xmlschemas/GpxExtensions/v3 http://www.garmin.com/xmlschemas/GpxExtensionsv3.xsd",
@@ -115,6 +117,7 @@ export class GPXEncoder {
       wpt: waypoints = [],
       rte: routes = [],
       trk: tracks = [],
+      extensions,
     } = gpxData;
     const parts: string[] = [];
 
@@ -134,6 +137,10 @@ export class GPXEncoder {
     tracks.forEach((track) => {
       parts.push(this.buildTrack(track));
     });
+
+    if (extensions) {
+      parts.push(this.buildExtensions(extensions));
+    }
 
     return parts.join("\n");
   }
@@ -240,10 +247,6 @@ export class GPXEncoder {
     point: WptType,
     tagName: "wpt" | "trkpt" | "rtept"
   ): string {
-    if (point.time === undefined) {
-      return "";
-    }
-
     const lat = point.lat;
     const lon = point.lon;
     const latOk =
@@ -278,22 +281,16 @@ export class GPXEncoder {
       parts.push(this.buildTimeElement(point.time));
     }
 
-    // Add speed and course information
-    this.addOptionalElement(parts, "speed", point.speed?.toString());
-    this.addOptionalElement(parts, "course", point.course?.toString());
-
     // GPX standard attributes
     this.addStandardWaypointElements(parts, point);
 
     // Extension attributes
-    if (point.extensions) {
-      const processedExtensions = this.processPointExtensions(
-        point,
-        point.extensions
-      );
-      if (Object.keys(processedExtensions).length > 0) {
-        parts.push(this.buildExtensions(processedExtensions));
-      }
+    const processedExtensions = this.processPointExtensions(
+      point,
+      point.extensions ?? {}
+    );
+    if (Object.keys(processedExtensions).length > 0) {
+      parts.push(this.buildExtensions(processedExtensions));
     }
 
     parts.push(`</${tagName}>`);
@@ -323,7 +320,7 @@ export class GPXEncoder {
     this.addOptionalElement(parts, "sym", point.sym);
     this.addOptionalElement(parts, "type", point.type);
     this.addOptionalElement(parts, "fix", point.fix);
-    this.addOptionalElement(parts, "sat", point.sat);
+    this.addOptionalElement(parts, "sat", point.sat?.toString());
     this.addOptionalElement(parts, "hdop", point.hdop?.toString());
     this.addOptionalElement(parts, "vdop", point.vdop?.toString());
     this.addOptionalElement(parts, "pdop", point.pdop?.toString());
@@ -345,15 +342,15 @@ export class GPXEncoder {
 
     this.addRouteTrackCommonElements(parts, route);
 
+    if (route.extensions) {
+      parts.push(this.buildExtensions(route.extensions));
+    }
+
     // Route points
     if (route.rtept) {
       route.rtept?.forEach((point) => {
         parts.push(this.buildWaypoint(point, "rtept"));
       });
-    }
-
-    if (route.extensions) {
-      parts.push(this.buildExtensions(route.extensions));
     }
 
     parts.push("</rte>");
@@ -370,15 +367,15 @@ export class GPXEncoder {
 
     this.addRouteTrackCommonElements(parts, track);
 
+    if (track.extensions) {
+      parts.push(this.buildExtensions(track.extensions));
+    }
+
     // Track segments
     if (track.trkseg) {
       track.trkseg.forEach((segment) => {
         parts.push(this.buildTrackSegment(segment));
       });
-    }
-
-    if (track.extensions) {
-      parts.push(this.buildExtensions(track.extensions));
     }
 
     parts.push("</trk>");

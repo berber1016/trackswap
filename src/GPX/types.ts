@@ -188,7 +188,7 @@ export interface WptType {
   /**
    * Number of satellites used to calculate the GPX fix.
    */
-  sat?: string;
+  sat?: number;
   /**
    * Horizontal dilution of precision.
    */

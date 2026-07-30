@@ -1,6 +1,6 @@
 {
   "name": "trackswap",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A typed, adapter-based toolkit for decoding, normalizing and transcoding FIT, GPX and TCX data.",
   "type": "module",
   "main": "dist/index.cjs",
@@ -68,7 +68,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/berber1016/trackswap.git"
+    "url": "git+https://github.com/berber1016/trackswap.git"
   },
   "homepage": "https://github.com/berber1016/trackswap#readme",
   "bugs": {

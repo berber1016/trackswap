@@ -69,6 +69,10 @@ FIT 文件只解码一次，活动与健康数据作为同一 `TrackDocument` �
 - `summaries`：日汇总、睡眠汇总及设备汇总；
 - `diagnostics`：FIT SDK profile、无效值、未知消息和解析警告。
 
+标准化边界由 TrackSwap 负责：FIT epoch、`timestamp_16`、Garmin sentinel、
+字段 scale/unit、时区偏移和 HSA 数组展开均不会泄漏给业务调用方。所有时区偏移
+统一使用秒；sentinel 只保留在 `status`/`attributes.rawValue`，不会伪装成有效测量值。
+
 ~~~ts
 const document = await trackSwap.decode(fitBuffer, {
   fit: {

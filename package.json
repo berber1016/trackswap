@@ -86,7 +86,7 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
-    "@garmin/fitsdk": "^21.195.0",
+    "@garmin/fitsdk": "21.212.0",
     "dayjs": "^1.11.13",
     "geolib": "^3.3.4",
     "htmlparser2": "^10.0.0"

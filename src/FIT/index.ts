@@ -26,6 +26,7 @@ export {
 } from "./health.js";
 export type {
   FITDocumentParseOptions,
+  FITHealthBuildEnvironment,
   FITPrimaryKind,
   FITDiagnosticsV1,
   HealthDocumentV1,

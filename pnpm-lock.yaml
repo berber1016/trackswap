@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@garmin/fitsdk':
-        specifier: ^21.195.0
-        version: 21.202.0
+        specifier: 21.212.0
+        version: 21.212.0
       dayjs:
         specifier: ^1.11.13
         version: 1.11.20
@@ -184,8 +184,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@garmin/fitsdk@21.202.0':
-    resolution: {integrity: sha512-WeveKUCKZSehRdM6JY/n0embblH18z5sY0KkJye5Z9nJ8Qv2S6EEmoSuBrW2ew45OtTGph0bu4/jxlO6VRP+Qw==}
+  '@garmin/fitsdk@21.212.0':
+    resolution: {integrity: sha512-NnIcaBZyEqaNhCv9KvH2lc0/N+epmUO+6wp7ITI+wEaw3R7YtRLwS6qow3d2UTKKWbrUUZnsPEAgU+Obd8bD/g==}
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -403,7 +403,7 @@ snapshots:
   '@esbuild/win32-x64@0.19.12':
     optional: true
 
-  '@garmin/fitsdk@21.202.0': {}
+  '@garmin/fitsdk@21.212.0': {}
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:

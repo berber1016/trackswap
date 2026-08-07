@@ -51,6 +51,7 @@ export type {
   FITDiagnosticWarningV1,
   FITDiagnosticsV1,
   FITDocumentParseOptions,
+  FITHealthBuildEnvironment,
   FITMessages,
   FITPrimaryKind,
   HealthDocumentV1,

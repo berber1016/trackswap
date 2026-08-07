@@ -5,6 +5,7 @@
     "outDir": "./dist",
     "declaration": true,
     "emitDeclarationOnly": true,
+    "removeComments": false,
     "noEmit": false
   },
   "include": ["src/**/*.ts"],

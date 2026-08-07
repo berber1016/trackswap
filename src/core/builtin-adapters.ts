@@ -104,6 +104,7 @@ export class FITAdapter
       recognizedMessageCounts: {},
       unknownMessageCounts: {},
       invalidValueCounts: {},
+      warningCounts: {},
       warnings: [],
     };
     const fileId = native.fileIdMesgs?.[0];

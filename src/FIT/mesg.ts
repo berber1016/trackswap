@@ -44,6 +44,7 @@ const mesgDefns: MesgDefns = {
   session: {
     mesgNum: MesgNum.SESSION,
     fieldDefns: [
+      { name: "message_index", number: 254, type: "uint16" },
       { name: "timestamp", number: 253, type: "date_time" },
       { name: "start_time", number: 2, type: "date_time" },
       { name: "total_elapsed_time", number: 7, type: "seconds" },
@@ -55,13 +56,14 @@ const mesgDefns: MesgDefns = {
       { name: "total_descent", number: 22, type: "uint16" },
       { name: "sport", number: 5, type: "enum_sport" },
       { name: "sub_sport", number: 6, type: "enum_sub_sport" },
-      { name: "first_lap_index", number: 11, type: "uint16" },
+      { name: "first_lap_index", number: 25, type: "uint16" },
       { name: "num_laps", number: 26, type: "uint16" },
     ],
   },
   lap: {
     mesgNum: MesgNum.LAP,
     fieldDefns: [
+      { name: "message_index", number: 254, type: "uint16" },
       { name: "timestamp", number: 253, type: "date_time" },
       { name: "start_time", number: 2, type: "date_time" },
       { name: "start_position_lat", number: 3, type: "semicircles" },

@@ -77,9 +77,9 @@ export class SessionStructurePlugin extends BaseFITStructurePlugin {
       // Find corresponding Records for each Lap
       const lapsWithRecords = sessionLaps.map((lap, lapIndex) => {
         const lapStartTime = dayjs(lap.startTime).valueOf();
-        const nextLapStartTime = dayjs(
-          sessionLaps[lapIndex + 1]?.startTime
-        ).valueOf();
+        const nextLapStart = sessionLaps[lapIndex + 1]?.startTime;
+        const nextLapStartTime =
+          nextLapStart == null ? Number.NaN : dayjs(nextLapStart).valueOf();
         const elapsedLapEndTime =
           lapStartTime + (lap.totalElapsedTime ?? 0) * 1000;
         const isBoundedByNextLap =

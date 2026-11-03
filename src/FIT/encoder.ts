@@ -121,36 +121,48 @@ export class FITEncoder {
     }
 
     // Process all sessions
-    let totalSessions = 0;
     const allEvents: EventMesgType[] = [];
     const allActivities: ActivityMesgType[] = [];
+    let nextLapIndex = 0;
 
-    for (const session of sessions) {
+    for (const [sessionIndex, sourceSession] of sessions.entries()) {
+      const lapMesgs = (sourceSession.lapMesgs ?? []).map(
+        (lap, lapOffset) => ({
+          ...lap,
+          messageIndex: nextLapIndex + lapOffset,
+        }),
+      );
+      const session: SessionMesgType = {
+        ...sourceSession,
+        messageIndex: sessionIndex,
+        firstLapIndex: nextLapIndex,
+        numLaps: lapMesgs.length,
+        lapMesgs,
+      };
+
       // Build session-related events
-      if (session.lapMesgs) {
-        this.buildEventsFromLaps(session.lapMesgs, allEvents);
+      if (lapMesgs.length > 0) {
+        this.buildEventsFromLaps(lapMesgs, allEvents);
       }
 
       // Build records
-      if (session.lapMesgs) {
-        for (const lap of session.lapMesgs) {
-          if (lap.recordMesgs) {
-            this.buildRecords(lap.recordMesgs);
-          }
+      for (const lap of lapMesgs) {
+        if (lap.recordMesgs) {
+          this.buildRecords(lap.recordMesgs);
         }
       }
 
       // Build laps
-      if (session.lapMesgs) {
-        this.buildLaps(session.lapMesgs);
+      if (lapMesgs.length > 0) {
+        this.buildLaps(lapMesgs);
       }
 
       // Build session
       this.buildSession(session);
-      totalSessions++;
 
       // Build activity
       this.buildActivityFromSession(session, allActivities);
+      nextLapIndex += lapMesgs.length;
     }
 
     // Write all events
@@ -263,6 +275,7 @@ export class FITEncoder {
    */
   private buildSession(session: SessionMesgType): void {
     this.writeMesg("session", {
+      message_index: session.messageIndex,
       timestamp: session.timestamp
         ? session.timestamp
         : undefined,
@@ -274,20 +287,20 @@ export class FITEncoder {
       start_position_lat:
         session.startPositionLat != null &&
         Number.isFinite(session.startPositionLat)
-          ? this.convertToSemicircles(session.startPositionLat)
+          ? session.startPositionLat
           : undefined,
       start_position_long:
         session.startPositionLong != null &&
         Number.isFinite(session.startPositionLong)
-          ? this.convertToSemicircles(session.startPositionLong)
+          ? session.startPositionLong
           : undefined,
       total_distance: session.totalDistance,
       total_ascent: session.totalAscent,
       total_descent: session.totalDescent,
       sport: session.sport || this.options.defaultActivity,
       sub_sport: session.subSport || this.options.defaultSubActivity,
-      first_lap_index: session.firstLapIndex || 0,
-      num_laps: session.numLaps || session.lapMesgs?.length || 1,
+      first_lap_index: session.firstLapIndex ?? 0,
+      num_laps: session.numLaps ?? session.lapMesgs?.length ?? 0,
     });
   }
 
@@ -304,25 +317,26 @@ export class FITEncoder {
    */
   private buildLap(lap: LapMesgType): void {
     this.writeMesg("lap", {
+      message_index: lap.messageIndex,
       timestamp: lap?.timestamp ? lap.timestamp : undefined,
       start_time: lap?.startTime
         ? lap.startTime
         : undefined,
       start_position_lat:
         lap?.startPositionLat != null && Number.isFinite(lap.startPositionLat)
-          ? this.convertToSemicircles(lap.startPositionLat)
+          ? lap.startPositionLat
           : undefined,
       start_position_long:
         lap?.startPositionLong != null && Number.isFinite(lap.startPositionLong)
-          ? this.convertToSemicircles(lap.startPositionLong)
+          ? lap.startPositionLong
           : undefined,
       end_position_lat:
         lap?.endPositionLat != null && Number.isFinite(lap.endPositionLat)
-          ? this.convertToSemicircles(lap.endPositionLat)
+          ? lap.endPositionLat
           : undefined,
       end_position_long:
         lap?.endPositionLong != null && Number.isFinite(lap.endPositionLong)
-          ? this.convertToSemicircles(lap.endPositionLong)
+          ? lap.endPositionLong
           : undefined,
       total_elapsed_time: lap?.totalElapsedTime,
       total_timer_time: lap?.totalTimerTime,
@@ -347,11 +361,11 @@ export class FITEncoder {
       timestamp: record.timestamp,
       position_lat:
         record?.positionLat != null && Number.isFinite(record.positionLat)
-          ? this.convertToSemicircles(record.positionLat)
+          ? record.positionLat
           : undefined,
       position_long:
         record?.positionLong != null && Number.isFinite(record.positionLong)
-          ? this.convertToSemicircles(record.positionLong)
+          ? record.positionLong
           : undefined,
       altitude: record?.altitude,
       enhancedAltitude: record?.enhancedAltitude,
@@ -469,15 +483,6 @@ export class FITEncoder {
 
     const date = dayjs(timestamp);
     return date.valueOf();
-  }
-
-  /**
-   * Convert coordinates to semicircles
-   */
-  private convertToSemicircles(coord?: number): number | undefined {
-    if (coord === undefined || coord === null) return undefined;
-    if (!Number.isFinite(coord)) return undefined;
-    return Math.round((coord * 2 ** 31) / 180);
   }
 
   /**

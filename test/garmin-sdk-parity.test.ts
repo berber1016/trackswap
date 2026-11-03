@@ -8,6 +8,7 @@ import TrackSwap, {
   type ActivityLapType,
   type ActivityRecordType,
   type ActivityType,
+  type FileType,
   type TrackDocument,
 } from "../src/index.js";
 
@@ -137,6 +138,80 @@ test("matches Garmin FIT SDK output after stable JSON projection", async () => {
       projectTrackSwap(document),
       projectGarmin(official.messages as GarminMessages)
     );
+  } finally {
+    await trackSwap.dispose();
+  }
+});
+
+function roundTripActivity(index: number, startSecond: number, latitude: number): ActivityType {
+  const at = (offset: number) =>
+    new Date(Date.parse("2026-01-01T00:00:00.000Z") + (startSecond + offset) * 1000);
+  const records: ActivityRecordType[] = [
+    {
+      index: 0,
+      lapIndex: 0,
+      timestamp: at(0),
+      positionLat: latitude,
+      positionLong: 120 + latitude,
+    },
+    {
+      index: 1,
+      lapIndex: 0,
+      timestamp: at(1),
+    },
+    {
+      index: 2,
+      lapIndex: 0,
+      timestamp: at(2),
+      positionLat: latitude + 0.001,
+      positionLong: 120 + latitude + 0.001,
+    },
+  ];
+  const lap: ActivityLapType = {
+    index: 0,
+    messageIndex: 0,
+    startTime: at(0),
+    timestamp: at(2),
+    records,
+  };
+  return {
+    index,
+    messageIndex: index,
+    startTime: at(0),
+    timestamp: at(2),
+    event: "session",
+    eventType: "stop",
+    sport: "running",
+    laps: [lap],
+  };
+}
+
+test("preserves activity coordinates, sparse GPS coverage, and multi-session record ownership", async () => {
+  const source: FileType = {
+    activities: [roundTripActivity(0, 0, 31.2), roundTripActivity(1, 10, 32.2)],
+  };
+  const trackSwap = new TrackSwap();
+  try {
+    const encoded = await trackSwap.encodeActivity(source, { format: "fit" });
+    const decoded = await trackSwap.decodeActivity(encoded, { format: "fit" });
+
+    assert.equal(decoded.activities?.length, 2);
+    for (const [activityIndex, activity] of (decoded.activities ?? []).entries()) {
+      const records = activity.laps?.flatMap((lap) => lap.records ?? []) ?? [];
+      assert.equal(records.length, 3);
+      assert.equal(records[1]?.positionLat, undefined);
+      assert.equal(records[1]?.positionLong, undefined);
+
+      const expected = source.activities?.[activityIndex]?.laps?.[0]?.records ?? [];
+      for (const recordIndex of [0, 2]) {
+        assert.ok(
+          Math.abs(records[recordIndex]!.positionLat! - expected[recordIndex]!.positionLat!) < 1e-5,
+        );
+        assert.ok(
+          Math.abs(records[recordIndex]!.positionLong! - expected[recordIndex]!.positionLong!) < 1e-5,
+        );
+      }
+    }
   } finally {
     await trackSwap.dispose();
   }

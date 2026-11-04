@@ -59,6 +59,22 @@ const converted = await trackSwap.transcode(input, {
 const course = await trackSwap.encodeCourse(input);
 ~~~
 
+FIT 力量训练会将 `set` message 按原始顺序投影到
+`activity.strengthSets`，保留动作、休息、次数、重量、时长和设备动作标签：
+
+~~~ts
+const file = await trackSwap.decodeActivity(fitBuffer, { format: "fit" });
+const [activity] = file.activities ?? [];
+
+for (const phase of activity?.strengthSets ?? []) {
+  console.log(phase.setType, phase.repetitions, phase.weight, phase.exercises);
+}
+~~~
+
+部分 FIT 活动包含 `record`、但没有实际 `lap` message。TrackSwap 会把这些
+Record 放入一个合成 Lap，确保统一活动模型不丢样本；不会根据 Session 的
+`numLaps` 编造 Lap 明细。
+
 ## FIT 健康数据
 
 FIT 文件只解码一次，活动与健康数据作为同一 `TrackDocument` 的 facet 返回。健康结构不直接绑定 Garmin Connect JSON，使用稳定的中间表示：

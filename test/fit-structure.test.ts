@@ -67,6 +67,31 @@ test("preserves native message families and assigns records when laps are absent
         heartRate: 155,
       },
     ],
+    setMesgs: [
+      {
+        messageIndex: 0,
+        startTime: firstStart,
+        duration: 30,
+        repetitions: 10,
+        setType: "active",
+        category: ["squat"],
+      },
+      {
+        messageIndex: 1,
+        startTime: new Date("2026-11-03T09:00:30.000Z"),
+        duration: 90,
+        setType: "rest",
+      },
+      {
+        messageIndex: 2,
+        startTime: secondStart,
+        duration: 40,
+        repetitions: 8,
+        setType: "active",
+        category: ["deadlift"],
+        categorySubtype: [25],
+      },
+    ],
   };
   const ctx = context(rawMessages);
   await new StructureProcessor(() => [new SessionStructurePlugin()]).process(
@@ -76,6 +101,7 @@ test("preserves native message families and assigns records when laps are absent
   assert.deepEqual(ctx.result?.activityMesgs, rawMessages.activityMesgs);
   assert.deepEqual(ctx.result?.sportMesgs, rawMessages.sportMesgs);
   assert.deepEqual(ctx.result?.recordMesgs, rawMessages.recordMesgs);
+  assert.deepEqual(ctx.result?.setMesgs, rawMessages.setMesgs);
   assert.equal(ctx.result?.sessionMesgs?.length, 2);
   assert.equal(ctx.result?.sessionMesgs?.[0]?.lapMesgs?.length, 1);
   assert.equal(ctx.result?.sessionMesgs?.[1]?.lapMesgs?.length, 1);
@@ -86,6 +112,14 @@ test("preserves native message families and assigns records when laps are absent
   assert.deepEqual(
     ctx.result?.sessionMesgs?.[1]?.lapMesgs?.[0]?.recordMesgs,
     rawMessages.recordMesgs?.slice(3),
+  );
+  assert.deepEqual(
+    ctx.result?.sessionMesgs?.[0]?.setMesgs,
+    rawMessages.setMesgs?.slice(0, 2),
+  );
+  assert.deepEqual(
+    ctx.result?.sessionMesgs?.[1]?.setMesgs,
+    rawMessages.setMesgs?.slice(2),
   );
   assert.equal(ctx.metadata.get("fit-synthetic-lap-count"), 2);
   assert.equal(ctx.metadata.get("fit-unassigned-record-count"), undefined);

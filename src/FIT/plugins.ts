@@ -20,7 +20,8 @@ export class SessionStructurePlugin extends BaseFITStructurePlugin {
     messages: FITDecoderMesgs,
     context: FITContext
   ): Partial<FITFileType> {
-    const { sessionMesgs, lapMesgs, recordMesgs, lengthMesgs } = messages;
+    const { sessionMesgs, lapMesgs, recordMesgs, lengthMesgs, setMesgs } =
+      messages;
 
     if (!sessionMesgs?.length) {
       fitDebugWarn(
@@ -108,6 +109,14 @@ export class SessionStructurePlugin extends BaseFITStructurePlugin {
                   (!hasNextSessionBoundary || recordTime < nextSessionStartTime)
                 );
               });
+      const sessionSets = (setMesgs ?? []).filter((set) => {
+        const setTime = dayjs(set.startTime ?? set.timestamp).valueOf();
+        if (!Number.isFinite(setTime)) return sessionMesgs.length === 1;
+        if (setTime < sessionStartTime) return false;
+        return hasNextSessionBoundary
+          ? setTime < nextSessionStartTime
+          : setTime <= sessionEndTime + 2000;
+      });
 
       // Some valid FIT producers emit session + record messages without any
       // lap message. A canonical activity still needs a segment that owns the
@@ -190,6 +199,7 @@ export class SessionStructurePlugin extends BaseFITStructurePlugin {
       return {
         ...session,
         lapMesgs: lapsWithRecords,
+        setMesgs: sessionSets,
       };
     });
 

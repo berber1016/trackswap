@@ -14,6 +14,7 @@ export interface FITFileType {
   lapMesgs?: LapMesgType[];
   recordMesgs?: RecordMesgType[];
   lengthMesgs?: LengthMesgType[];
+  setMesgs?: SetMesgType[];
   courseMesgs?: any[];
   healthDocument?: import("./health.js").HealthDocumentV1;
   fitDocumentMetadata?: {
@@ -50,6 +51,7 @@ export type FITDecoderMesgs = {
    * Length 消息数组
    */
   lengthMesgs?: LengthMesgType[];
+  setMesgs?: SetMesgType[];
   courseMesgs?: any[];
   // Index signature, supports dynamic access
   [key: string]: any[] | undefined;
@@ -117,6 +119,30 @@ export interface UserProfileMesgType {
   activityClass?: number;
   positionSetting?: string;
   temperatureSetting?: string;
+}
+
+/** FIT strength-training set phase. Active and rest phases share this message. */
+export interface SetMesgType {
+  /** Timestamp of the parent strength-training session. */
+  timestamp?: Date;
+  /** Duration of this active or rest phase in seconds. */
+  duration?: number;
+  /** Repetitions completed during an active phase. */
+  repetitions?: number;
+  /** External load in kilograms. */
+  weight?: number;
+  setType?: string;
+  startTime?: Date;
+  /** One or more FIT exercise categories associated with the phase. */
+  category?: Array<string | number> | string | number;
+  /** Category-specific FIT exercise-name enum values, aligned by index. */
+  categorySubtype?:
+    | Array<number | null | undefined>
+    | number
+    | null;
+  weightDisplayUnit?: string | number;
+  messageIndex?: number;
+  wktStepIndex?: number;
 }
 
 /**
@@ -610,6 +636,9 @@ export interface SessionMesgType {
 
   // 关联的 lap 数据
   lapMesgs?: LapMesgType[];
+
+  // 关联的力量训练 active/rest 阶段
+  setMesgs?: SetMesgType[];
 }
 
 /**

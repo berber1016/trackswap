@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { Decoder, Stream } from "@garmin/fitsdk";
+import { Decoder, Encoder, Profile, Stream } from "@garmin/fitsdk";
 import TrackSwap, {
   type ActivityLapType,
   type ActivityRecordType,
@@ -212,6 +212,86 @@ test("preserves activity coordinates, sparse GPS coverage, and multi-session rec
         );
       }
     }
+  } finally {
+    await trackSwap.dispose();
+  }
+});
+
+test("projects Garmin strength set messages into the canonical activity", async () => {
+  const start = new Date("2026-11-03T19:31:22.000Z");
+  const end = new Date("2026-11-03T19:34:22.000Z");
+  const encoder = new Encoder();
+  encoder.onMesg(Profile.MesgNum.FILE_ID, {
+    manufacturer: "development",
+    product: 1,
+    timeCreated: start,
+    type: "activity",
+  });
+  encoder.onMesg(Profile.MesgNum.SET, {
+    timestamp: start,
+    startTime: start,
+    duration: 42,
+    repetitions: 12,
+    weight: 40,
+    setType: "active",
+    category: ["deadlift"],
+    categorySubtype: [25],
+    messageIndex: 0,
+  });
+  encoder.onMesg(Profile.MesgNum.SET, {
+    timestamp: start,
+    startTime: new Date(start.getTime() + 42_000),
+    duration: 138,
+    setType: "rest",
+    messageIndex: 1,
+  });
+  encoder.onMesg(Profile.MesgNum.SESSION, {
+    timestamp: end,
+    startTime: start,
+    totalElapsedTime: 180,
+    totalTimerTime: 180,
+    totalReps: 12,
+    numLaps: 2,
+    sport: "training",
+    subSport: "strengthTraining",
+    event: "session",
+    eventType: "stop",
+  });
+  encoder.onMesg(Profile.MesgNum.ACTIVITY, {
+    timestamp: end,
+    totalTimerTime: 180,
+    numSessions: 1,
+    type: "manual",
+    event: "activity",
+    eventType: "stop",
+  });
+  const input = Buffer.from(encoder.close());
+
+  const official = new Decoder(Stream.fromBuffer(input)).read();
+  assert.deepEqual(official.errors, []);
+  assert.equal(official.messages.setMesgs?.length, 2);
+
+  const trackSwap = new TrackSwap();
+  try {
+    const document = await trackSwap.decode(input, { format: "fit" });
+    const activity = document.facets.activity?.activities?.[0];
+    assert.equal(activity?.strengthSets?.length, 2);
+    assert.deepEqual(activity?.strengthSets?.[0], {
+      ...official.messages.setMesgs[0],
+      index: 0,
+      exercises: [
+        {
+          category: "deadlift",
+          categorySubtype: 25,
+          name: "straightLegDeadlift",
+        },
+      ],
+    });
+    assert.deepEqual(activity?.strengthSets?.[1], {
+      ...official.messages.setMesgs[1],
+      index: 1,
+      exercises: [],
+    });
   } finally {
     await trackSwap.dispose();
   }

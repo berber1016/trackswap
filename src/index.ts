@@ -32,6 +32,8 @@ export type {
   ActivityLinkType,
   ActivityLengthType,
   ActivityRecordType,
+  ActivityStrengthExerciseType,
+  ActivityStrengthSetType,
   ActivityType,
   FileType,
   UserProfileType,

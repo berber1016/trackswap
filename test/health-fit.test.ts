@@ -7,7 +7,12 @@ import { Encoder, Profile } from "@garmin/fitsdk";
 import TrackSwap, {
   buildHealthDocumentFromMessages,
   detectFITKinds,
+  TRACKSWAP_HEALTH_PARSER_VERSION,
 } from "../src/index.js";
+
+test("uses a package-independent Health IR parser revision", () => {
+  assert.equal(TRACKSWAP_HEALTH_PARSER_VERSION, "trackswap-health-ir-v1");
+});
 
 function profileField(messageName, fieldName) {
   const profile = Profile;

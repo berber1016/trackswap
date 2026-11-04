@@ -343,7 +343,7 @@ export type FITHealthBuildEnvironment = {
 };
 
 /** Parser revision embedded in `HealthDocumentV1.diagnostics.parserVersion`. */
-export const TRACKSWAP_HEALTH_PARSER_VERSION = "trackswap-0.2.2-health-ir-v1";
+export const TRACKSWAP_HEALTH_PARSER_VERSION = "trackswap-health-ir-v1";
 
 const HEALTH_MESSAGE_NAMES = new Set([
   'timestampCorrelationMesgs',

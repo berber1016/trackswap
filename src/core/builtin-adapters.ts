@@ -22,9 +22,37 @@ import type {
   TrackFormat,
 } from "../document.js";
 import type { FileType } from "../types.js";
+import { TrackSwapError } from "../errors.js";
 
 const FIT_SIGNATURE_OFFSET = 8;
 const FIT_SIGNATURE = ".FIT";
+
+function countCanonicalActivityRecords(activity: FileType | undefined): number {
+  return (activity?.activities ?? []).reduce(
+    (activityTotal, currentActivity) =>
+      activityTotal +
+      (currentActivity.laps ?? []).reduce(
+        (lapTotal, lap) => lapTotal + (lap.records?.length ?? 0),
+        0
+      ),
+    0
+  );
+}
+
+export function assertFITActivityRecordParity(
+  native: FITFileType,
+  activity: FileType | undefined
+): void {
+  const nativeRecordCount = native.recordMesgs?.length ?? 0;
+  const canonicalRecordCount = countCanonicalActivityRecords(activity);
+  if (nativeRecordCount === canonicalRecordCount) return;
+
+  throw new TrackSwapError(
+    "FIT_ACTIVITY_DATA_LOSS",
+    `FIT activity record count mismatch: decoded ${nativeRecordCount}, canonicalized ${canonicalRecordCount}`,
+    { format: "fit" }
+  );
+}
 
 function xmlPrefix(input: Buffer): string {
   return input
@@ -98,12 +126,16 @@ export class FITAdapter
     const activity = kinds.includes("activity")
       ? await this.activities.convertToActivity(native, "fit")
       : undefined;
+    if (kinds.includes("activity")) {
+      assertFITActivityRecordParity(native, activity);
+    }
     const fitDiagnostics = native.healthDocument?.diagnostics ?? {
       parserVersion: TRACKSWAP_HEALTH_PARSER_VERSION,
       messageCounts: native.fitDocumentMetadata?.messageCounts ?? {},
       recognizedMessageCounts: {},
       unknownMessageCounts: {},
       invalidValueCounts: {},
+      warningCounts: {},
       warnings: [],
     };
     const fileId = native.fileIdMesgs?.[0];

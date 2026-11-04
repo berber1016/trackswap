@@ -2,6 +2,7 @@ import {
   LapMesgType,
   LengthMesgType,
   RecordMesgType,
+  SetMesgType,
   SessionMesgType,
 } from "./FIT/types.js";
 import { IntensityType } from "./TCX/types.js";
@@ -109,6 +110,8 @@ export interface ActivityType extends SessionMesgType {
    */
   endTime?: Date;
   laps?: ActivityLapType[];
+  /** Ordered strength-training active/rest phases for this activity. */
+  strengthSets?: ActivityStrengthSetType[];
   /** GPX trk/name or an equivalent source activity title. */
   activityName?: string;
   /** GPX trk/cmt. */
@@ -123,6 +126,22 @@ export interface ActivityType extends SessionMesgType {
   activityNumber?: number;
   /** Original GPX trk/extensions payload. */
   gpxExtensions?: ExtensionsType;
+}
+
+export interface ActivityStrengthExerciseType {
+  /** FIT exercise category, for example `deadlift` or `cardio`. */
+  category: string | number;
+  /** Raw category-specific FIT exercise-name enum value. */
+  categorySubtype?: number;
+  /** Stable Garmin FIT profile name, for example `straightLegDeadlift`. */
+  name?: string;
+}
+
+export interface ActivityStrengthSetType extends SetMesgType {
+  /** Stable zero-based order inside the activity. */
+  index: number;
+  /** Category/subtype pairs projected into portable exercise labels. */
+  exercises: ActivityStrengthExerciseType[];
 }
 
 export interface ActivityLinkType {

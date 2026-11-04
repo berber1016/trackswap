@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 
 const declaration = readFileSync("dist/index.d.ts", "utf8");
+const healthDeclaration = readFileSync("dist/FIT/health.d.ts", "utf8");
 const relativeImports = [
   ...declaration.matchAll(/from\s+["'](\.\/[^"']+)["']/g),
 ].map((match) => match[1]);
@@ -14,6 +15,22 @@ for (const specifier of relativeImports) {
     `Missing declaration referenced by dist/index.d.ts: ${declarationPath}`
   );
 }
+
+assert.match(
+  healthDeclaration,
+  /Only `valid` values are safe to use/,
+  "Health declaration must document valid-value aggregation semantics"
+);
+assert.match(
+  healthDeclaration,
+  /UTC offset at `startTime`, in seconds; this is not a duration/,
+  "Health declaration must document session offset units and semantics"
+);
+assert.match(
+  healthDeclaration,
+  /original FIT sentinel solely for diagnostics and round-trip audit/,
+  "Health declaration must document raw sentinel handling"
+);
 
 const require = createRequire(import.meta.url);
 const commonjs = require("../dist/index.cjs");

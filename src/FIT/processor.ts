@@ -193,7 +193,13 @@ export class StructureProcessor implements IFITPipelineProcessor {
       throw new Error("Message data cannot be empty");
     }
 
-    let structuredResult: Partial<FITFileType> = {};
+    // `includeNative` must expose the complete decoder output, not only the
+    // message families handled by a structure plugin. Plugins may replace a
+    // family with its associated representation (for example sessions with
+    // nested laps), while unhandled message families remain lossless.
+    let structuredResult: Partial<FITFileType> = {
+      ...context.rawMessages,
+    };
 
     // Apply all structure plugins
     const plugins = this.getStructurePlugins();

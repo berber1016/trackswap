@@ -28,6 +28,7 @@ import {
   convertGPXExtensionsMapping,
 } from "../util.js";
 import dayjs from "dayjs";
+import { Profile } from "@garmin/fitsdk";
 import type { Dayjs } from "dayjs";
 import { MetricsAggregator } from "./metrics/MetricsCalculator.js";
 
@@ -292,6 +293,7 @@ export class FITToActivityConverter extends BaseActivityConverter {
           sessionMesg?.endPositionLong
         ),
         laps: this.convertFITLap2Trackseg(sessionMesg?.lapMesgs),
+        strengthSets: this.convertFITStrengthSets(sessionMesg?.setMesgs),
       }));
     } else if (fit.courseMesgs?.length) {
       obj.routes = fit.courseMesgs.map((courseMesg, index) => ({
@@ -301,6 +303,47 @@ export class FITToActivityConverter extends BaseActivityConverter {
       }));
     }
     return obj;
+  }
+
+  private convertFITStrengthSets(
+    sets?: import("../FIT/types.js").SetMesgType[]
+  ): import("../types.js").ActivityStrengthSetType[] {
+    return (sets ?? []).map((set, index) => {
+      const categories = Array.isArray(set.category)
+        ? set.category
+        : set.category == null
+          ? []
+          : [set.category];
+      const subtypes = Array.isArray(set.categorySubtype)
+        ? set.categorySubtype
+        : set.categorySubtype == null
+          ? []
+          : [set.categorySubtype];
+      const exercises = categories.map((category, categoryIndex) => {
+        const rawSubtype = subtypes[categoryIndex];
+        const categorySubtype =
+          typeof rawSubtype === "number" && Number.isFinite(rawSubtype)
+            ? rawSubtype
+            : undefined;
+        const categoryName = String(category);
+        const profileType = `${categoryName}ExerciseName`;
+        const profileNames = Profile.types?.[profileType] as
+          | Record<number, string>
+          | undefined;
+        return {
+          category,
+          ...(categorySubtype === undefined ? {} : { categorySubtype }),
+          ...(categorySubtype === undefined || !profileNames?.[categorySubtype]
+            ? {}
+            : { name: profileNames[categorySubtype] }),
+        };
+      });
+      return {
+        ...set,
+        index,
+        exercises,
+      };
+    });
   }
   /**
    * 将 FIT 的 recordMesg 转为 ActivityRecordType

@@ -11,12 +11,16 @@ export interface FITFileType {
   deviceSettingsMesgs?: DeviceSettingsMesgType[];
   userProfileMesgs?: UserProfileMesgType[];
   sessionMesgs?: SessionMesgType[];
+  lapMesgs?: LapMesgType[];
+  recordMesgs?: RecordMesgType[];
+  lengthMesgs?: LengthMesgType[];
   courseMesgs?: any[];
   healthDocument?: import("./health.js").HealthDocumentV1;
   fitDocumentMetadata?: {
     detectedKinds: import("./health.js").FITPrimaryKind[];
     messageCounts: Record<string, number>;
   };
+  [key: string]: unknown;
 }
 
 export type FITDecoderMesgs = {

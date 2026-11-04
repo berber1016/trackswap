@@ -4,6 +4,7 @@ import {
   FITDecoderMesgs,
   FITFileType,
   FITContext,
+  LapMesgType,
   LengthMesgType,
 } from "./types.js";
 import { fitDebugWarn } from "../fit-debug.js";
@@ -29,7 +30,7 @@ export class SessionStructurePlugin extends BaseFITStructurePlugin {
     }
 
     // Associate each Session's Laps and Records
-    const sessionStructureMesgs = sessionMesgs.map((session) => {
+    const sessionStructureMesgs = sessionMesgs.map((session, sessionIndex) => {
       const sessionStartTime = dayjs(session.startTime).valueOf();
       const elapsedSessionEndTime =
         sessionStartTime + (session.totalElapsedTime ?? 0) * 1000;
@@ -42,6 +43,22 @@ export class SessionStructurePlugin extends BaseFITStructurePlugin {
           ? declaredSessionEndTime
           : Number.NEGATIVE_INFINITY
       );
+      const nextSession = sessionMesgs[sessionIndex + 1];
+      const nextSessionStartTime = nextSession
+        ? dayjs(nextSession.startTime).valueOf()
+        : Number.NaN;
+      const hasNextSessionBoundary =
+        Number.isFinite(nextSessionStartTime) &&
+        nextSessionStartTime > sessionStartTime;
+      const boundedSessionRecords = (recordMesgs ?? []).filter((record) => {
+        const recordTime = dayjs(record.timestamp).valueOf();
+        if (!Number.isFinite(recordTime) || recordTime < sessionStartTime) {
+          return false;
+        }
+        return hasNextSessionBoundary
+          ? recordTime < nextSessionStartTime
+          : recordTime <= sessionEndTime + 2000;
+      });
 
       // FIT defines firstLapIndex/numLaps specifically for this association.
       // Prefer those stable indices over floating-point duration windows.
@@ -58,21 +75,66 @@ export class SessionStructurePlugin extends BaseFITStructurePlugin {
               );
             })
           : [];
-      const sessionLaps = (
+      const declaredSessionLaps = (
         indexedLaps.length > 0
           ? indexedLaps
           : (lapMesgs ?? []).filter((lap) => {
-          const lapStartTime = dayjs(lap.startTime).valueOf();
-          return (
-            Number.isFinite(lapStartTime) &&
-            lapStartTime >= sessionStartTime &&
-            lapStartTime <= sessionEndTime + 2000
-          );
+              const lapStartTime = dayjs(lap.startTime).valueOf();
+              return (
+                Number.isFinite(lapStartTime) &&
+                lapStartTime >= sessionStartTime &&
+                lapStartTime <= sessionEndTime + 2000
+              );
             })
       ).sort(
         (left, right) =>
           dayjs(left.startTime).valueOf() - dayjs(right.startTime).valueOf()
       );
+      const sessionRecords =
+        declaredSessionLaps.length > 0
+          ? boundedSessionRecords
+          : sessionMesgs.length === 1
+            ? [...(recordMesgs ?? [])]
+            : (recordMesgs ?? []).filter((record) => {
+                const recordTime = dayjs(record.timestamp).valueOf();
+                if (!Number.isFinite(recordTime)) return sessionIndex === 0;
+                if (sessionIndex === 0) {
+                  return (
+                    !hasNextSessionBoundary || recordTime < nextSessionStartTime
+                  );
+                }
+                return (
+                  recordTime >= sessionStartTime &&
+                  (!hasNextSessionBoundary || recordTime < nextSessionStartTime)
+                );
+              });
+
+      // Some valid FIT producers emit session + record messages without any
+      // lap message. A canonical activity still needs a segment that owns the
+      // records, otherwise the activity facet silently drops the entire time
+      // series. Synthesize exactly one lap from the session summary while the
+      // original top-level messages remain available in native output.
+      const sessionLaps: LapMesgType[] =
+        declaredSessionLaps.length > 0
+          ? declaredSessionLaps
+          : sessionRecords.length > 0
+            ? [
+                {
+                  ...session,
+                  messageIndex:
+                    typeof session.firstLapIndex === "number"
+                      ? session.firstLapIndex
+                      : sessionIndex,
+                  recordMesgs: sessionRecords,
+                } as LapMesgType,
+              ]
+            : [];
+      if (declaredSessionLaps.length === 0 && sessionLaps.length === 1) {
+        const count = Number(
+          context.metadata.get("fit-synthetic-lap-count") ?? 0
+        );
+        context.metadata.set("fit-synthetic-lap-count", count + 1);
+      }
 
       // Find corresponding Records for each Lap
       const lapsWithRecords = sessionLaps.map((lap, lapIndex) => {
@@ -89,15 +151,17 @@ export class SessionStructurePlugin extends BaseFITStructurePlugin {
           : Math.max(elapsedLapEndTime, sessionEndTime);
 
         const lapRecords =
-          recordMesgs?.filter((record) => {
-            const recordTime = dayjs(record.timestamp).valueOf();
-            return (
-              recordTime >= lapStartTime &&
-              (isBoundedByNextLap
-                ? recordTime < lapEndTime
-                : recordTime <= lapEndTime)
-            );
-          }) || [];
+          declaredSessionLaps.length === 0
+            ? sessionRecords
+            : sessionRecords.filter((record) => {
+                const recordTime = dayjs(record.timestamp).valueOf();
+                return (
+                  recordTime >= lapStartTime &&
+                  (isBoundedByNextLap
+                    ? recordTime < lapEndTime
+                    : recordTime <= lapEndTime + 2000)
+                );
+              });
 
         // 获取起点索引
         const startIndex = lap.firstLengthIndex ?? undefined;
@@ -126,8 +190,6 @@ export class SessionStructurePlugin extends BaseFITStructurePlugin {
       return {
         ...session,
         lapMesgs: lapsWithRecords,
-        messageIndex:
-          session.messageIndex !== undefined ? session.messageIndex : 0, // Ensure messageIndex is a number
       };
     });
 

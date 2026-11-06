@@ -50,7 +50,7 @@ export class SessionStructurePlugin extends BaseFITStructurePlugin {
         : Number.NaN;
       const hasNextSessionBoundary =
         Number.isFinite(nextSessionStartTime) &&
-        nextSessionStartTime > sessionStartTime;
+        nextSessionStartTime >= sessionStartTime;
 
       // FIT defines firstLapIndex/numLaps specifically for this association.
       // Prefer those stable indices over floating-point duration windows.
@@ -143,7 +143,10 @@ export class SessionStructurePlugin extends BaseFITStructurePlugin {
         const elapsedLapEndTime =
           lapStartTime + (lap.totalElapsedTime ?? 0) * 1000;
         const isBoundedByNextLap =
-          Number.isFinite(nextLapStartTime) && nextLapStartTime > lapStartTime;
+          Number.isFinite(nextLapStartTime) && nextLapStartTime >= lapStartTime;
+        // FIT timestamps have second precision. Adjacent short phases can
+        // share a start; the earlier interval is then empty, rather than
+        // extending to the session end and duplicating every later record.
         const lapEndTime = isBoundedByNextLap
           ? nextLapStartTime
           : Math.max(elapsedLapEndTime, sessionEndTime);

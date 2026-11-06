@@ -162,9 +162,13 @@ export class ActivityLapConverter extends BaseTCXConverter {
       Calories: (child, target) =>
         (target.Calories = this.parseFloat(child.value)),
       AverageHeartRateBpm: (child, target) =>
-        (target.AverageHeartRateBpm = this.parseFloat(child.value)),
+        (target.AverageHeartRateBpm = this.parseHeartRate(
+          this.getChildByTag(child, "Value")?.value ?? child.value,
+        )),
       MaximumHeartRateBpm: (child, target) =>
-        (target.MaximumHeartRateBpm = this.parseFloat(child.value)),
+        (target.MaximumHeartRateBpm = this.parseHeartRate(
+          this.getChildByTag(child, "Value")?.value ?? child.value,
+        )),
       Intensity: (child, target) =>
         (target.Intensity = child.value as IntensityType),
       TriggerMethod: (child, target) =>

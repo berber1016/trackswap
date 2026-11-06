@@ -296,3 +296,30 @@ test("projects Garmin strength set messages into the canonical activity", async 
     await trackSwap.dispose();
   }
 });
+
+test("matches Garmin records and all laps despite rounded starts and one-based lap indices", async () => {
+  const at = (offset: number) => new Date(Date.parse("2026-01-01T00:00:00.000Z") + offset * 1000);
+  const encoder = new Encoder();
+  encoder.onMesg(Profile.MesgNum.FILE_ID, {manufacturer: "development", product: 1, timeCreated: at(0), type: "activity"});
+  for (const offset of [-1, 0, 9, 10, 19, 20, 29, 34]) {
+    encoder.onMesg(Profile.MesgNum.RECORD, {timestamp: at(offset), distance: (offset + 1) * 3, power: 202, cadence: 76, heartRate: 135, speed: 3, altitude: 100});
+  }
+  for (const index of [1, 2, 3]) {
+    encoder.onMesg(Profile.MesgNum.LAP, {messageIndex: index, startTime: at((index-1)*10), timestamp: at(index*10), totalElapsedTime: 10, totalTimerTime: 10, totalDistance: 30, event: "lap", eventType: "stop"});
+  }
+  encoder.onMesg(Profile.MesgNum.SESSION, {startTime: at(0), timestamp: at(30), totalElapsedTime: 30, totalTimerTime: 30, totalDistance: 90, firstLapIndex: 0, numLaps: 3, sport: "cycling", subSport: "road", event: "session", eventType: "stop"});
+  encoder.onMesg(Profile.MesgNum.ACTIVITY, {timestamp: at(30), totalTimerTime: 30, numSessions: 1, type: "manual", event: "activity", eventType: "stop"});
+  const input = Buffer.from(encoder.close());
+  const official = new Decoder(Stream.fromBuffer(input)).read();
+  assert.deepEqual(official.errors, []);
+  const trackSwap = new TrackSwap();
+  try {
+    const document = await trackSwap.decode(input, {format: "fit"});
+    const actual = projectTrackSwap(document);
+    assert.deepEqual(actual.session, projectSession(official.messages.sessionMesgs?.[0]));
+    assert.deepEqual(actual.laps, (official.messages.lapMesgs ?? []).map(projectLap));
+    assert.deepEqual(actual.records, (official.messages.recordMesgs ?? []).map(projectRecord));
+    assert.equal(actual.records.length, 8);
+    assert.equal(actual.laps.length, 3);
+  } finally { await trackSwap.dispose(); }
+});

@@ -1,6 +1,6 @@
 {
   "name": "trackswap",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "A typed, adapter-based toolkit for decoding, normalizing and transcoding FIT, GPX and TCX data.",
   "type": "module",
   "main": "dist/index.cjs",

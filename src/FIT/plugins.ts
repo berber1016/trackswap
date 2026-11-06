@@ -51,15 +51,6 @@ export class SessionStructurePlugin extends BaseFITStructurePlugin {
       const hasNextSessionBoundary =
         Number.isFinite(nextSessionStartTime) &&
         nextSessionStartTime > sessionStartTime;
-      const boundedSessionRecords = (recordMesgs ?? []).filter((record) => {
-        const recordTime = dayjs(record.timestamp).valueOf();
-        if (!Number.isFinite(recordTime) || recordTime < sessionStartTime) {
-          return false;
-        }
-        return hasNextSessionBoundary
-          ? recordTime < nextSessionStartTime
-          : recordTime <= sessionEndTime + 2000;
-      });
 
       // FIT defines firstLapIndex/numLaps specifically for this association.
       // Prefer those stable indices over floating-point duration windows.
@@ -77,7 +68,7 @@ export class SessionStructurePlugin extends BaseFITStructurePlugin {
             })
           : [];
       const declaredSessionLaps = (
-        indexedLaps.length > 0
+        indexedLaps.length === numLaps && indexedLaps.length > 0
           ? indexedLaps
           : (lapMesgs ?? []).filter((lap) => {
               const lapStartTime = dayjs(lap.startTime).valueOf();
@@ -92,23 +83,21 @@ export class SessionStructurePlugin extends BaseFITStructurePlugin {
           dayjs(left.startTime).valueOf() - dayjs(right.startTime).valueOf()
       );
       const sessionRecords =
-        declaredSessionLaps.length > 0
-          ? boundedSessionRecords
-          : sessionMesgs.length === 1
-            ? [...(recordMesgs ?? [])]
-            : (recordMesgs ?? []).filter((record) => {
-                const recordTime = dayjs(record.timestamp).valueOf();
-                if (!Number.isFinite(recordTime)) return sessionIndex === 0;
-                if (sessionIndex === 0) {
-                  return (
-                    !hasNextSessionBoundary || recordTime < nextSessionStartTime
-                  );
-                }
+        sessionMesgs.length === 1
+          ? [...(recordMesgs ?? [])]
+          : (recordMesgs ?? []).filter((record) => {
+              const recordTime = dayjs(record.timestamp).valueOf();
+              if (!Number.isFinite(recordTime)) return sessionIndex === 0;
+              if (sessionIndex === 0) {
                 return (
-                  recordTime >= sessionStartTime &&
-                  (!hasNextSessionBoundary || recordTime < nextSessionStartTime)
+                  !hasNextSessionBoundary || recordTime < nextSessionStartTime
                 );
-              });
+              }
+              return (
+                recordTime >= sessionStartTime &&
+                (!hasNextSessionBoundary || recordTime < nextSessionStartTime)
+              );
+            });
       const sessionSets = (setMesgs ?? []).filter((set) => {
         const setTime = dayjs(set.startTime ?? set.timestamp).valueOf();
         if (!Number.isFinite(setTime)) return sessionMesgs.length === 1;
@@ -164,11 +153,13 @@ export class SessionStructurePlugin extends BaseFITStructurePlugin {
             ? sessionRecords
             : sessionRecords.filter((record) => {
                 const recordTime = dayjs(record.timestamp).valueOf();
+                // Session ownership is already resolved. Include leading and
+                // trailing sensor samples in the edge laps instead of silently
+                // dropping valid records outside rounded summary timestamps.
+                if (!Number.isFinite(recordTime)) return lapIndex === 0;
                 return (
-                  recordTime >= lapStartTime &&
-                  (isBoundedByNextLap
-                    ? recordTime < lapEndTime
-                    : recordTime <= lapEndTime + 2000)
+                  (lapIndex === 0 || recordTime >= lapStartTime) &&
+                  (!isBoundedByNextLap || recordTime < lapEndTime)
                 );
               });
 

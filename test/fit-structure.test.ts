@@ -198,3 +198,56 @@ test("rejects a canonical FIT activity that drops decoded records", () => {
       error.code === "FIT_ACTIVITY_DATA_LOSS",
   );
 });
+
+test("preserves leading and trailing records with declared laps", async () => {
+  const at = (second: number) => new Date(Date.UTC(2026, 0, 1, 0, 0, second));
+  const records = [-1, 0, 9, 10, 19, 24].map((second, i) => ({
+    timestamp: at(second), power: 200 + i, cadence: 80, distance: i * 5,
+  }));
+  const raw: FITDecoderMesgs = {
+    sessionMesgs: [{ startTime: at(0), timestamp: at(20), totalElapsedTime: 20 }],
+    lapMesgs: [
+      { messageIndex: 0, startTime: at(0), timestamp: at(10), totalElapsedTime: 10 },
+      { messageIndex: 1, startTime: at(10), timestamp: at(20), totalElapsedTime: 10 },
+    ],
+    recordMesgs: records,
+  };
+  const ctx = context(raw);
+  const result = new SessionStructurePlugin().structureData(raw, ctx);
+  const laps = result.sessionMesgs?.[0].lapMesgs ?? [];
+  assert.equal(laps.length, 2);
+  assert.deepEqual(laps[0].recordMesgs, records.slice(0, 3));
+  assert.deepEqual(laps[1].recordMesgs, records.slice(3));
+  assert.deepEqual(raw.recordMesgs, records);
+});
+
+test("falls back to session times when declared lap indices select only a partial set", () => {
+  const at = (second: number) => new Date(Date.UTC(2026, 0, 1, 0, 0, second));
+  const raw: FITDecoderMesgs = {
+    sessionMesgs: [{ startTime: at(0), timestamp: at(30), totalElapsedTime: 30, firstLapIndex: 0, numLaps: 3 }],
+    lapMesgs: [1, 2, 3].map((index) => ({messageIndex: index, startTime: at((index - 1) * 10), timestamp: at(index * 10), totalElapsedTime: 10})),
+    recordMesgs: [0, 10, 20].map((second) => ({ timestamp: at(second), power: 200 })),
+  };
+  const result = new SessionStructurePlugin().structureData(raw, context(raw));
+  assert.deepEqual(result.sessionMesgs?.[0].lapMesgs?.map(lap => lap.messageIndex), [1, 2, 3]);
+  assert.deepEqual(result.sessionMesgs?.[0].lapMesgs?.flatMap(lap => lap.recordMesgs ?? []), raw.recordMesgs);
+});
+
+test("keeps boundary records in exactly one session and lap", () => {
+  const at = (second: number) => new Date(Date.UTC(2026, 0, 1, 0, 0, second));
+  const raw: FITDecoderMesgs = {
+    sessionMesgs: [
+      {startTime: at(0), timestamp: at(10), totalElapsedTime: 10, firstLapIndex: 0, numLaps: 1},
+      {startTime: at(20), timestamp: at(30), totalElapsedTime: 10, firstLapIndex: 1, numLaps: 1},
+    ],
+    lapMesgs: [
+      {messageIndex: 0, startTime: at(0), timestamp: at(10), totalElapsedTime: 10},
+      {messageIndex: 1, startTime: at(20), timestamp: at(30), totalElapsedTime: 10},
+    ],
+    recordMesgs: [-1, 0, 15, 20, 35].map(second => ({timestamp: at(second), power: second + 200})),
+  };
+  const result = new SessionStructurePlugin().structureData(raw, context(raw));
+  const sessions = result.sessionMesgs ?? [];
+  assert.deepEqual(sessions[0].lapMesgs?.flatMap(l => l.recordMesgs ?? []), raw.recordMesgs?.slice(0,3));
+  assert.deepEqual(sessions[1].lapMesgs?.flatMap(l => l.recordMesgs ?? []), raw.recordMesgs?.slice(3));
+});

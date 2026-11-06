@@ -317,9 +317,21 @@ export class ActivityToFITEncoder extends BaseActivityEncoder {
   }
 
   private convertActivity2FITSession(activity: ActivityType): SessionMesgType {
+    const { startTime, timestamp } = activity;
+    if (
+      !startTime ||
+      !timestamp ||
+      !Number.isFinite(startTime.valueOf()) ||
+      !Number.isFinite(timestamp.valueOf())
+    ) {
+      throw new Error("Cannot encode a FIT activity without valid timestamps");
+    }
     const session: SessionMesgType = {
       ...activity,
+      startTime,
+      timestamp,
       event: activity?.event || "session",
+      eventType: activity?.eventType || "stop",
       sport: activity?.sport || "generic",
 
       lapMesgs: activity.laps?.map((lap) => this.convertLap2FITLap(lap)) || [],

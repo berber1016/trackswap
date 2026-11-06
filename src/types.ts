@@ -100,7 +100,7 @@ export interface UserProfileType {
  * tcx -> Activity
  * 对应 gpx 的 trk ， fit 的 sessions, tcx 的 Activity
  */
-export interface ActivityType extends SessionMesgType {
+export interface ActivityType extends Partial<SessionMesgType> {
   /**
    * 活动索引
    */

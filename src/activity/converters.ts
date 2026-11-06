@@ -450,6 +450,12 @@ export class TCXToActivityConverter extends BaseActivityConverter {
   name = "tcx-to-activity-converter";
   supportedTags = ["tcx"];
 
+  private sourceTime(value: string | Date | undefined): Date | undefined {
+    if (!value) return undefined;
+    const parsed = dayjs(value);
+    return parsed.isValid() ? parsed.toDate() : undefined;
+  }
+
   convert(ast: TokenAST, context: ActivityContext): FileType | undefined {
     if (context.sourceFormat !== "tcx") return undefined;
 
@@ -592,21 +598,44 @@ export class TCXToActivityConverter extends BaseActivityConverter {
    */
   private convertTCXActivityToActivity(
     activity: TCXActivityType,
-    idx: number
+    idx: number,
   ): ActivityType {
     const laps =
-      activity.Lap?.map((lap, segIdx) => this.convertTCXLap2Lap(lap, segIdx)) ||
-      [];
+      activity.Lap?.map((lap, segIdx) =>
+        this.convertTCXLap2Lap(
+          lap,
+          segIdx,
+          segIdx === 0 ? this.sourceTime(activity.Id) : undefined,
+        ),
+      ) || [];
     // 聚合数据
-    const aggregatedData = new MetricsAggregator().calculateLapAggMetrics(
-      laps
-    ) as SessionMesgType;
+    const aggregatedData = new MetricsAggregator().calculateLapAggMetrics(laps);
+    const sumLapField = (
+      field:
+        | "totalCalories"
+        | "totalDistance"
+        | "totalElapsedTime"
+        | "totalTimerTime",
+    ) =>
+      laps.some((lap) => lap[field] != null)
+        ? laps.reduce((sum, lap) => sum + (lap[field] ?? 0), 0)
+        : undefined;
     return {
       index: idx,
       messageIndex: idx,
       sport: activity.Sport?.toLowerCase(),
       laps: laps,
       ...aggregatedData,
+      startTime: aggregatedData?.startTime ?? this.sourceTime(activity.Id),
+      // The generic aggregator's current-date fallback is not source evidence.
+      timestamp:
+        aggregatedData?.endTime ??
+        aggregatedData?.startTime ??
+        this.sourceTime(activity.Id),
+      totalCalories: sumLapField("totalCalories"),
+      totalDistance: sumLapField("totalDistance"),
+      totalElapsedTime: sumLapField("totalElapsedTime"),
+      totalTimerTime: sumLapField("totalTimerTime"),
     };
   }
 
@@ -618,7 +647,8 @@ export class TCXToActivityConverter extends BaseActivityConverter {
    */
   private convertTCXLap2Lap(
     lap: TCXActivityLapType,
-    idx: number
+    idx: number,
+    fallbackStart?: Date,
   ): ActivityLapType {
     // 将 track point 提取出来
     const allPoints = lap?.Track?.flatMap((track) => track.Trackpoint) || [];
@@ -626,19 +656,70 @@ export class TCXToActivityConverter extends BaseActivityConverter {
       allPoints
         ?.filter(
           (point: TrackpointType | undefined): point is TrackpointType =>
-            point !== undefined && point.Time !== undefined
+            point !== undefined && point.Time !== undefined,
         )
         .map((point: TrackpointType, ptIdx: number) =>
-          this.convertPoint(point, ptIdx)
+          this.convertPoint(point, ptIdx, idx),
         ) || [];
 
     const metricsAggregator = new MetricsAggregator();
     const aggregatedData = metricsAggregator.calculateRecordsAggMetrics(points);
+    const records = aggregatedData?.records ?? [];
+    const validTimes = records
+      .map((record) => this.sourceTime(record.timestamp))
+      .filter((time): time is Date => time != null);
+    const startTime =
+      this.sourceTime(lap.StartTime) ?? fallbackStart ?? validTimes[0];
+    const lastTime = validTimes.at(-1);
+    const summaryValue = (value: number | undefined) =>
+      value != null && Number.isFinite(value) && value >= 0 ? value : undefined;
+    const timerTime = summaryValue(lap.TotalTimeSeconds);
+    const recordElapsed =
+      startTime && lastTime
+        ? Math.max(0, (lastTime.valueOf() - startTime.valueOf()) / 1000)
+        : undefined;
+    const elapsed =
+      timerTime == null
+        ? recordElapsed
+        : Math.max(timerTime, recordElapsed ?? 0);
+    const endTime =
+      startTime && elapsed != null
+        ? new Date(startTime.valueOf() + elapsed * 1000)
+        : lastTime;
+    const heartRates = records
+      .map((record) => record.heartRate)
+      .filter(
+        (value): value is number =>
+          value != null && Number.isFinite(value) && value > 0,
+      );
     return {
       index: idx,
       messageIndex: idx,
       ...aggregatedData,
-      records: aggregatedData?.records || [],
+      startTime,
+      endTime,
+      timestamp: endTime ?? startTime,
+      totalElapsedTime: elapsed,
+      totalTimerTime: timerTime,
+      totalDistance:
+        summaryValue(lap.DistanceMeters) ?? aggregatedData?.totalDistance,
+      totalCalories: summaryValue(lap.Calories),
+      maxSpeed: summaryValue(lap.MaximumSpeed) ?? aggregatedData?.maxSpeed,
+      avgHeartRate:
+        summaryValue(lap.AverageHeartRateBpm) ??
+        (heartRates.length
+          ? heartRates.reduce((sum, value) => sum + value, 0) /
+            heartRates.length
+          : undefined),
+      maxHeartRate:
+        summaryValue(lap.MaximumHeartRateBpm) ??
+        (heartRates.length
+          ? heartRates.reduce((max, value) => Math.max(max, value), -Infinity)
+          : undefined),
+      minHeartRate: heartRates.length
+        ? heartRates.reduce((min, value) => Math.min(min, value), Infinity)
+        : undefined,
+      records,
       lengths: [],
     };
   }
@@ -646,7 +727,7 @@ export class TCXToActivityConverter extends BaseActivityConverter {
   protected convertPoint(
     point: TrackpointType,
     idx?: number,
-    lapIdx?: number
+    lapIdx?: number,
   ): ActivityRecordType {
     const { Position, Time, DistanceMeters, AltitudeMeters } = point;
 
@@ -659,9 +740,10 @@ export class TCXToActivityConverter extends BaseActivityConverter {
       positionLong: Position?.LongitudeDegrees
         ? Number(Position!.LongitudeDegrees)
         : undefined,
-      timestamp: dayjs(Time).toDate(),
+      timestamp: this.sourceTime(Time),
       distance: DistanceMeters,
       altitude: AltitudeMeters,
+      heartRate: point.HeartRateBpm,
     };
   }
 }

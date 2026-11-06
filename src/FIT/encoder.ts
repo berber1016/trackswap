@@ -284,6 +284,9 @@ export class FITEncoder {
         : undefined,
       total_elapsed_time: session.totalElapsedTime,
       total_timer_time: session.totalTimerTime,
+      total_calories: session.totalCalories,
+      avg_heart_rate: session.avgHeartRate,
+      max_heart_rate: session.maxHeartRate,
       start_position_lat:
         session.startPositionLat != null &&
         Number.isFinite(session.startPositionLat)
@@ -340,6 +343,9 @@ export class FITEncoder {
           : undefined,
       total_elapsed_time: lap?.totalElapsedTime,
       total_timer_time: lap?.totalTimerTime,
+      total_calories: lap?.totalCalories,
+      avg_heart_rate: lap?.avgHeartRate,
+      max_heart_rate: lap?.maxHeartRate,
       total_distance: lap?.totalDistance,
       total_ascent: lap?.totalAscent,
       total_descent: lap?.totalDescent,

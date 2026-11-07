@@ -251,3 +251,100 @@ test("keeps boundary records in exactly one session and lap", () => {
   assert.deepEqual(sessions[0].lapMesgs?.flatMap(l => l.recordMesgs ?? []), raw.recordMesgs?.slice(0,3));
   assert.deepEqual(sessions[1].lapMesgs?.flatMap(l => l.recordMesgs ?? []), raw.recordMesgs?.slice(3));
 });
+
+test("partitions records once when adjacent swim laps start in the same second", () => {
+  const at = (second: number) => new Date(Date.UTC(2026, 0, 1, 0, 0, second));
+  const raw: FITDecoderMesgs = {
+    sessionMesgs: [
+      {
+        startTime: at(0),
+        timestamp: at(0),
+        totalElapsedTime: 25,
+        firstLapIndex: 0,
+        numLaps: 4,
+        sport: "swimming",
+      },
+    ],
+    lapMesgs: [0, 10, 10, 20].map((second, index) => ({
+      messageIndex: index,
+      startTime: at(second),
+      timestamp: at(0),
+      totalElapsedTime: index === 1 ? 0.388 : 10,
+    })),
+    recordMesgs: [-1, 0, 9, 10, 11, 19, 20, 25].map((second) => ({
+      timestamp: at(second),
+      heartRate: second + 100,
+    })),
+  };
+  const result = new SessionStructurePlugin().structureData(raw, context(raw));
+  const laps = result.sessionMesgs?.[0].lapMesgs ?? [];
+  assert.equal(laps.length, 4);
+  assert.deepEqual(
+    laps.map((lap) => lap.messageIndex),
+    [0, 1, 2, 3],
+  );
+  assert.deepEqual(laps[1].recordMesgs, []);
+  assert.deepEqual(laps[2].recordMesgs, raw.recordMesgs?.slice(3, 6));
+  assert.deepEqual(
+    laps.flatMap((lap) => lap.recordMesgs ?? []),
+    raw.recordMesgs,
+  );
+  for (let index = 0; index < laps.length; index++) {
+    assert.equal(laps[index].startTime, raw.lapMesgs?.[index].startTime);
+    assert.equal(laps[index].timestamp, raw.lapMesgs?.[index].timestamp);
+    assert.equal(
+      laps[index].totalElapsedTime,
+      raw.lapMesgs?.[index].totalElapsedTime,
+    );
+  }
+});
+
+test("partitions records once when adjacent sessions share a rounded start time", () => {
+  const at = (second: number) => new Date(Date.UTC(2026, 0, 1, 0, 0, second));
+  const raw: FITDecoderMesgs = {
+    sessionMesgs: [
+      {
+        startTime: at(0),
+        timestamp: at(0),
+        totalElapsedTime: 0.388,
+        firstLapIndex: 0,
+        numLaps: 1,
+      },
+      {
+        startTime: at(0),
+        timestamp: at(20),
+        totalElapsedTime: 20,
+        firstLapIndex: 1,
+        numLaps: 1,
+      },
+    ],
+    lapMesgs: [0, 1].map((index) => ({
+      messageIndex: index,
+      startTime: at(0),
+      timestamp: at(20),
+      totalElapsedTime: 20,
+    })),
+    recordMesgs: [-1, 0, 1, 19, 20].map((second) => ({
+      timestamp: at(second),
+      power: second + 200,
+    })),
+  };
+  const result = new SessionStructurePlugin().structureData(raw, context(raw));
+  const sessions = result.sessionMesgs ?? [];
+  assert.equal(sessions.length, 2);
+  assert.deepEqual(
+    sessions[0].lapMesgs?.[0].recordMesgs,
+    raw.recordMesgs?.slice(0, 1),
+  );
+  assert.deepEqual(
+    sessions[1].lapMesgs?.[0].recordMesgs,
+    raw.recordMesgs?.slice(1),
+  );
+  assert.deepEqual(
+    sessions.flatMap(
+      (session) =>
+        session.lapMesgs?.flatMap((lap) => lap.recordMesgs ?? []) ?? [],
+    ),
+    raw.recordMesgs,
+  );
+});

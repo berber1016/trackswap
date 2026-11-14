@@ -195,13 +195,15 @@ export const types = {
     size: 4,
     baseType: 0x86,
     setValue: DataView.prototype.setUint32,
-    mapValue: (value: number) => Math.round(value * 1000),
+    // FIT distance fields store metres at a scale of 100 (centimetres).
+    mapValue: (value: number) => Math.round(value * 100),
   },
   speed: {
     size: 2,
     baseType: 0x84,
     setValue: DataView.prototype.setUint16,
-    mapValue: (value: number) => Math.round(value * 100),
+    // FIT speed fields store metres per second at a scale of 1000.
+    mapValue: (value: number) => Math.round(value * 1000),
   },
   altitude: {
     size: 2,
